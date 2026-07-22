@@ -12,6 +12,7 @@ type OnboardingProps = {
 };
 
 type SetupMode = 'create' | 'restore';
+const RECOVERY_WINDOW = 100;
 
 export function Onboarding({ onCreated }: OnboardingProps) {
   const [mode, setMode] = useState<SetupMode>('create');
@@ -45,7 +46,12 @@ export function Onboarding({ onCreated }: OnboardingProps) {
 
       const words = normalizeMnemonic(mnemonic);
       if (words.length !== 24) return setValidation(`La frase debe tener 24 palabras; encontramos ${words.length}.`);
-      await restore({ password, mnemonic: [...words], recoverState: true });
+      await restore({
+        password,
+        mnemonic: [...words],
+        recoverState: true,
+        recoveryWindow: RECOVERY_WINDOW,
+      });
     } catch {
       // The Wavelength hooks expose the actionable error in their error state.
     }

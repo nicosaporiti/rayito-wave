@@ -7,6 +7,7 @@ import { App } from './App';
 
 const wallet = vi.hoisted(() => ({
   phase: 'ready',
+  recoveryStatus: 'idle',
   start: vi.fn(async () => undefined),
   stop: vi.fn(async () => undefined),
 }));
@@ -18,6 +19,18 @@ vi.mock('@lightninglabs/wavelength-react', () => ({
     start: wallet.start,
     stop: wallet.stop,
   }),
+  useWalletRecovery: () => {
+    if (wallet.recoveryStatus === 'restoring') {
+      return { acknowledge: vi.fn(), recovery: { status: 'restoring' } };
+    }
+    if (wallet.recoveryStatus === 'done') {
+      return {
+        acknowledge: vi.fn(),
+        recovery: { status: 'done', result: { recoveredVTXOs: 0 } },
+      };
+    }
+    return { acknowledge: vi.fn(), recovery: { status: 'idle' } };
+  },
 }));
 vi.mock('./components/Backup', () => ({ Backup: () => <main>Backup</main> }));
 vi.mock('./components/Brand', () => ({
@@ -34,6 +47,7 @@ vi.mock('./components/Icons', () => ({ BoltIcon: () => <span /> }));
 describe('App wallet locking', () => {
   beforeEach(() => {
     wallet.phase = 'ready';
+    wallet.recoveryStatus = 'idle';
     wallet.start.mockClear();
     wallet.stop.mockClear();
     Object.defineProperty(document, 'visibilityState', {
@@ -83,6 +97,47 @@ describe('App wallet locking', () => {
     });
 
     fireEvent(document, new Event('visibilitychange'));
+
+    await waitFor(() => expect(wallet.stop).toHaveBeenCalledOnce());
+    expect(wallet.start).toHaveBeenCalledOnce();
+  });
+
+  it('prevents locking and warns before unloading during recovery', async () => {
+    vi.useFakeTimers();
+    wallet.recoveryStatus = 'restoring';
+    render(<App />);
+
+    const lockButton = screen.getByRole('button', { name: 'Recuperando…' });
+    expect(lockButton).toBeDisabled();
+
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      value: 'hidden',
+    });
+    fireEvent(document, new Event('visibilitychange'));
+    await act(async () => {
+      vi.advanceTimersByTime(5 * 60 * 1_000);
+      await Promise.resolve();
+    });
+
+    expect(wallet.stop).not.toHaveBeenCalled();
+    expect(wallet.start).not.toHaveBeenCalled();
+
+    const unloadEvent = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(unloadEvent);
+    expect(unloadEvent.defaultPrevented).toBe(true);
+  });
+
+  it('locks when recovery finishes while the page is already hidden', async () => {
+    wallet.recoveryStatus = 'restoring';
+    const view = render(<App />);
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      value: 'hidden',
+    });
+
+    wallet.recoveryStatus = 'done';
+    view.rerender(<App />);
 
     await waitFor(() => expect(wallet.stop).toHaveBeenCalledOnce());
     expect(wallet.start).toHaveBeenCalledOnce();

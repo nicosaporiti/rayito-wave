@@ -29,6 +29,7 @@ button { color: inherit; }
 .header-actions { display: flex; align-items: center; gap: 10px; }
 .lock-button { appearance: none; padding: 7px 10px; border: 1px solid var(--line); border-radius: 99px; background: transparent; cursor: pointer; color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .lock-button:hover { border-color: var(--ink); color: var(--ink); }
+.lock-button:disabled { cursor: wait; opacity: .65; }
 .brand { color: var(--ink); text-decoration: none; display: inline-flex; align-items: center; gap: 9px; font-weight: 800; font-size: 18px; letter-spacing: -0.05em; }
 .brand-mark { width: 28px; height: 28px; display: grid; place-items: center; color: var(--ink); background: var(--bolt); border: 1px solid var(--ink); border-radius: 50%; box-shadow: 1px 1px 0 var(--ink); }
 .brand-mark svg { width: 15px; height: 15px; }

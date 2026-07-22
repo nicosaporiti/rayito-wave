@@ -6,7 +6,11 @@ import {
   type FormEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
-import type { PrepareSendResult, SendRequest } from '@lightninglabs/wavelength-react';
+import type {
+  CreateWalletResult,
+  PrepareSendResult,
+  SendRequest,
+} from '@lightninglabs/wavelength-react';
 import {
   useWalletActivity,
   useWalletBalance,
@@ -348,8 +352,65 @@ function ResultBox({ label, value }: { label: string; value: string }) {
 
 function RecoveryBanner() {
   const { recovery, acknowledge } = useWalletRecovery();
+
+  useEffect(() => {
+    if (recovery.status === 'done') {
+      const {
+        recoveredBoardingAddresses,
+        recoveredBoardingUTXOs,
+        recoveredOORReceiveScripts,
+        recoveredOORRecipientEvents,
+        recoveredVTXOs,
+        recoveryRan,
+      } = recovery.result;
+      console.info('[Rayito] Recuperación finalizada', {
+        recoveredBoardingAddresses,
+        recoveredBoardingUTXOs,
+        recoveredOORReceiveScripts,
+        recoveredOORRecipientEvents,
+        recoveredVTXOs,
+        recoveryRan,
+      });
+    }
+
+    if (recovery.status === 'failed') {
+      console.error('[Rayito] La recuperación falló', recovery.error);
+    }
+  }, [recovery]);
+
   if (recovery.status === 'idle') return null;
-  if (recovery.status === 'restoring') return <p className="recovery-banner">Estamos reconstruyendo tu saldo e historial. La wallet ya se puede usar.</p>;
-  if (recovery.status === 'done') return <p className="recovery-banner">Recuperación completa: {recovery.result.recoveredVTXOs} VTXOs encontrados. <button onClick={acknowledge}>Cerrar</button></p>;
-  return <p className="recovery-banner error">No pudimos completar el historial: {recovery.error.message} <button onClick={acknowledge}>Cerrar</button></p>;
+  if (recovery.status === 'restoring') {
+    return (
+      <p className="recovery-banner" role="status" aria-live="polite">
+        Estamos reconstruyendo tu saldo e historial. No cierres ni recargues esta pestaña.
+      </p>
+    );
+  }
+  if (recovery.status === 'done') {
+    return (
+      <p className="recovery-banner" role="status" aria-live="polite">
+        {recoveryResultMessage(recovery.result)} <button onClick={acknowledge}>Cerrar</button>
+      </p>
+    );
+  }
+  return (
+    <p className="recovery-banner error" role="alert">
+      No pudimos completar la recuperación: {recovery.error.message}{' '}
+      <button onClick={acknowledge}>Cerrar</button>
+    </p>
+  );
+}
+
+function recoveryResultMessage(result: CreateWalletResult): string {
+  const recoveredItems = result.recoveredVTXOs
+    + result.recoveredBoardingUTXOs
+    + result.recoveredOORRecipientEvents;
+
+  if (!result.recoveryRan) {
+    return 'La wallet abrió, pero el SDK no ejecutó el escaneo de recuperación.';
+  }
+  if (recoveredItems === 0) {
+    return 'El escaneo terminó, pero no encontró fondos ni movimientos recuperables.';
+  }
+  return `Recuperación completa: ${result.recoveredVTXOs} VTXOs, ${result.recoveredBoardingUTXOs} depósitos on-chain y ${result.recoveredOORRecipientEvents} recepciones encontradas.`;
 }

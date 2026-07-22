@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useWallet } from '@lightninglabs/wavelength-react';
+import { useWallet, useWalletRecovery } from '@lightninglabs/wavelength-react';
 import { Backup } from './components/Backup';
 import { Brand, NetworkBadge } from './components/Brand';
 import { Dashboard } from './components/Dashboard';
@@ -11,11 +11,13 @@ const ACTIVITY_EVENTS = ['keydown', 'pointerdown', 'touchstart', 'scroll'] as co
 
 export function App() {
   const { phase, error, start, stop } = useWallet();
+  const { recovery } = useWalletRecovery();
   const [pendingBackup, setPendingBackup] = useState<readonly string[] | null>(null);
   const lockPending = useRef(false);
+  const isRecovering = recovery.status === 'restoring';
 
   const lockWallet = useCallback(async (): Promise<void> => {
-    if (lockPending.current || phase !== 'ready') return;
+    if (lockPending.current || phase !== 'ready' || isRecovering) return;
 
     lockPending.current = true;
     try {
@@ -26,10 +28,14 @@ export function App() {
     } finally {
       lockPending.current = false;
     }
-  }, [phase, start, stop]);
+  }, [isRecovering, phase, start, stop]);
 
   useEffect(() => {
-    if (phase !== 'ready' || pendingBackup) return;
+    if (phase !== 'ready' || pendingBackup || isRecovering) return;
+    if (document.visibilityState === 'hidden') {
+      void lockWallet();
+      return;
+    }
 
     let timer = window.setTimeout(() => void lockWallet(), AUTO_LOCK_DELAY_MS);
     const resetTimer = (): void => {
@@ -47,7 +53,19 @@ export function App() {
       ACTIVITY_EVENTS.forEach((eventName) => window.removeEventListener(eventName, resetTimer));
       document.removeEventListener('visibilitychange', lockWhenHidden);
     };
-  }, [lockWallet, pendingBackup, phase]);
+  }, [isRecovering, lockWallet, pendingBackup, phase]);
+
+  useEffect(() => {
+    if (!isRecovering) return;
+
+    const guardRecovery = (event: BeforeUnloadEvent): void => {
+      event.preventDefault();
+      event.returnValue = true;
+    };
+
+    window.addEventListener('beforeunload', guardRecovery);
+    return () => window.removeEventListener('beforeunload', guardRecovery);
+  }, [isRecovering]);
 
   let content;
   if (pendingBackup) {
@@ -78,8 +96,13 @@ export function App() {
         <div className="header-actions">
           <NetworkBadge />
           {phase === 'ready' && !pendingBackup && (
-            <button className="lock-button" type="button" onClick={() => void lockWallet()}>
-              Bloquear
+            <button
+              className="lock-button"
+              type="button"
+              disabled={isRecovering}
+              onClick={() => void lockWallet()}
+            >
+              {isRecovering ? 'Recuperando…' : 'Bloquear'}
             </button>
           )}
         </div>
