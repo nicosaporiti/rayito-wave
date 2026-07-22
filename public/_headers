@@ -1,8 +1,13 @@
+/
+  Content-Security-Policy: default-src 'self'; base-uri 'none'; connect-src 'self' https://signet.wavelength-rest.lightning.finance https://signet.swapd-rest.lightning.finance https://mempool-signet.testnet.lightningcluster.com; font-src 'self' data:; form-action 'self'; frame-ancestors 'none'; img-src 'self' data:; object-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; worker-src 'self'
+
+/index.html
+  Content-Security-Policy: default-src 'self'; base-uri 'none'; connect-src 'self' https://signet.wavelength-rest.lightning.finance https://signet.swapd-rest.lightning.finance https://mempool-signet.testnet.lightningcluster.com; font-src 'self' data:; form-action 'self'; frame-ancestors 'none'; img-src 'self' data:; object-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; worker-src 'self'
+
 /*
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Embedder-Policy: require-corp
   Cross-Origin-Resource-Policy: same-origin
-  Content-Security-Policy: default-src 'self'; base-uri 'none'; connect-src 'self' https://signet.wavelength-rest.lightning.finance https://signet.swapd-rest.lightning.finance https://mempool-signet.testnet.lightningcluster.com; font-src 'self' data:; form-action 'self'; frame-ancestors 'none'; img-src 'self' data:; object-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; worker-src 'self'
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: no-referrer
