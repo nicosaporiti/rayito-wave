@@ -5,8 +5,6 @@ import { Brand, NetworkBadge } from './components/Brand';
 import { Dashboard } from './components/Dashboard';
 import { Onboarding, Unlock } from './components/Onboarding';
 import { BoltIcon } from './components/Icons';
-import { clearBrowserWalletData } from './lib/browser-storage';
-import { walletEngine } from './lib/wavelength';
 
 const AUTO_LOCK_DELAY_MS = 5 * 60 * 1_000;
 const ACTIVITY_EVENTS = ['keydown', 'pointerdown', 'touchstart', 'scroll'] as const;
@@ -126,29 +124,10 @@ function isWorkerError(error: Error): error is Error & { readonly code: 'worker_
 
 function FatalError({ error }: { error: Error }) {
   const workerFailed = isWorkerError(error);
-  const [isResetting, setIsResetting] = useState(false);
-  const [resetError, setResetError] = useState<string | null>(null);
   const retry = (): void => {
     const url = new URL(window.location.href);
     url.searchParams.set('retry', Date.now().toString());
     window.location.replace(url);
-  };
-  const resetLocalData = async (): Promise<void> => {
-    setIsResetting(true);
-    setResetError(null);
-    walletEngine.dispose();
-
-    try {
-      await clearBrowserWalletData();
-      retry();
-    } catch (resetFailure) {
-      setResetError(
-        resetFailure instanceof Error
-          ? resetFailure.message
-          : 'Chrome no permitió borrar los datos locales.',
-      );
-      setIsResetting(false);
-    }
   };
 
   return (
@@ -168,16 +147,6 @@ function FatalError({ error }: { error: Error }) {
             <p>
               Si probás otro perfil o navegador, la wallet no aparecerá automáticamente: necesitás tus 24 palabras para recuperarla. No borres los datos del perfil original.
             </p>
-            <p><small>Si esta wallet es de prueba y podés perderla, restablecé el almacenamiento interno de Chrome:</small></p>
-            <button
-              className="reset-button"
-              type="button"
-              disabled={isResetting}
-              onClick={() => void resetLocalData()}
-            >
-              {isResetting ? 'Borrando datos…' : 'Borrar datos locales y reintentar'}
-            </button>
-            {resetError && <p className="form-error">{resetError}</p>}
           </>
         )}
         <button className="primary-button" onClick={retry}>Reintentar</button>

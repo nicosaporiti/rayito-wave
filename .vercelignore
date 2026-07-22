@@ -1,0 +1,10 @@
+.git
+.vercel
+node_modules
+dist
+.DS_Store
+.env*
+*.local
+# The SDK loads the compressed runtime first. Vercel rejects the 123 MB LFS
+# working copy, so only the deployable .wasm.gz is published.
+public/wavewalletdk/v0.1.0/wavewalletdk.wasm
