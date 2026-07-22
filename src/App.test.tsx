@@ -145,7 +145,7 @@ describe('App wallet locking', () => {
     expect(wallet.start).toHaveBeenCalledOnce();
   });
 
-  it('explains how to recover from a blocked Chrome worker without deleting wallet data', () => {
+  it('shows neutral worker diagnostics and warns about browser-local wallet data', () => {
     wallet.phase = 'error';
     wallet.error = Object.assign(new Error('Worker runtime exited unexpectedly'), {
       code: 'worker_error',
@@ -153,7 +153,11 @@ describe('App wallet locking', () => {
 
     render(<App />);
 
-    expect(screen.getByText(/Chrome no pudo iniciar el motor local/)).toBeInTheDocument();
-    expect(screen.getByText(/No borres los datos del sitio/)).toBeInTheDocument();
+    expect(screen.getByText(/No pudimos iniciar uno de los procesos locales/)).toBeInTheDocument();
+    expect(screen.getByText(/Puede deberse a un bloqueo del navegador o a que el motor se detuvo/)).toBeInTheDocument();
+    expect(screen.getByText(/Worker runtime exited unexpectedly/)).toBeInTheDocument();
+    expect(screen.getByText(/necesitás tus 24 palabras para recuperarla/)).toBeInTheDocument();
+    expect(screen.getByText(/No borres los datos del perfil original/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument();
   });
 });

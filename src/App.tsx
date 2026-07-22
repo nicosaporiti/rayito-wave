@@ -137,13 +137,17 @@ function FatalError({ error }: { error: Error }) {
         <h1>No pudimos abrir Rayito</h1>
         <p className="form-error">
           {workerFailed
-            ? 'Chrome no pudo iniciar el motor local. Puede ser una versión anterior guardada en caché o una extensión que bloquea workers.'
+            ? 'No pudimos iniciar uno de los procesos locales de Rayito.'
             : error.message}
         </p>
         {workerFailed && (
-          <p>
-            Reintentá primero. Si vuelve a pasar, permití workers para este sitio o probá una ventana sin extensiones. No borres los datos del sitio si no guardaste tus 24 palabras.
-          </p>
+          <>
+            <p>Puede deberse a un bloqueo del navegador o a que el motor se detuvo inesperadamente.</p>
+            <p><small>Detalle técnico: {error.message}</small></p>
+            <p>
+              Si probás otro perfil o navegador, la wallet no aparecerá automáticamente: necesitás tus 24 palabras para recuperarla. No borres los datos del perfil original.
+            </p>
+          </>
         )}
         <button className="primary-button" onClick={retry}>Reintentar</button>
       </section>
