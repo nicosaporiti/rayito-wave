@@ -12,6 +12,10 @@ const wallet = vi.hoisted(() => ({
   start: vi.fn(async () => undefined),
   stop: vi.fn(async () => undefined),
 }));
+const storage = vi.hoisted(() => ({
+  clear: vi.fn(() => new Promise<void>(() => undefined)),
+}));
+const engine = vi.hoisted(() => ({ dispose: vi.fn() }));
 
 vi.mock('@lightninglabs/wavelength-react', () => ({
   useWallet: () => ({
@@ -44,6 +48,8 @@ vi.mock('./components/Onboarding', () => ({
   Unlock: () => <main>Unlock</main>,
 }));
 vi.mock('./components/Icons', () => ({ BoltIcon: () => <span /> }));
+vi.mock('./lib/browser-storage', () => ({ clearBrowserWalletData: storage.clear }));
+vi.mock('./lib/wavelength', () => ({ walletEngine: engine }));
 
 describe('App wallet locking', () => {
   beforeEach(() => {
@@ -52,6 +58,8 @@ describe('App wallet locking', () => {
     wallet.recoveryStatus = 'idle';
     wallet.start.mockClear();
     wallet.stop.mockClear();
+    storage.clear.mockClear();
+    engine.dispose.mockClear();
     Object.defineProperty(document, 'visibilityState', {
       configurable: true,
       value: 'visible',
@@ -158,6 +166,21 @@ describe('App wallet locking', () => {
     expect(screen.getByText(/Worker runtime exited unexpectedly/)).toBeInTheDocument();
     expect(screen.getByText(/necesitás tus 24 palabras para recuperarla/)).toBeInTheDocument();
     expect(screen.getByText(/No borres los datos del perfil original/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Borrar datos locales y reintentar' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument();
+  });
+
+  it('disposes the failed worker before clearing browser wallet data', async () => {
+    wallet.phase = 'error';
+    wallet.error = Object.assign(new Error('Wavelength worker error'), {
+      code: 'worker_error',
+    });
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Borrar datos locales y reintentar' }));
+
+    await waitFor(() => expect(storage.clear).toHaveBeenCalledOnce());
+    expect(engine.dispose).toHaveBeenCalledOnce();
+    expect(screen.getByRole('button', { name: 'Borrando datos…' })).toBeDisabled();
   });
 });
