@@ -211,6 +211,47 @@ function bindParams(stmt, params) {
   throw new Error("invalid SQL parameter container");
 }
 
+function vacuumIntoFallback(sql, params) {
+  const hasSingleFilename =
+    Array.isArray(params) && params.length === 1 && typeof params[0] === "string";
+  if (!hasSingleFilename) {
+    return null;
+  }
+  if (!/^\s*VACUUM\s+INTO\s+\?\s*;?\s*$/i.test(sql)) {
+    return null;
+  }
+
+  const path = new URL(params[0], "file://irrelevant").pathname;
+  const pathParts = path.split("/").filter(Boolean);
+  if (pathParts.length < 2) {
+    return null;
+  }
+
+  // Hex is reversible, filesystem-safe, and preserves the full source path so
+  // equal basenames from different wallet data directories cannot alias.
+  const encodedPath = Array.from(
+    new TextEncoder().encode(path),
+    (byte) => byte.toString(16).padStart(2, "0")
+  ).join("");
+
+  return [`/.sqlite-backup-${encodedPath}.backup`];
+}
+
+function isCantOpen(error) {
+  const message = error?.stack || error?.message || String(error);
+  return /SQLITE_CANTOPEN|unable to open database/i.test(message);
+}
+
+function runPreparedExec(db, sql, params) {
+  const stmt = db.prepare(sql);
+  try {
+    bindParams(stmt, params);
+    while (stmt.step()) {}
+  } finally {
+    stmt.finalize();
+  }
+}
+
 function getDB(dbId) {
   const db = dbs.get(dbId);
   if (!db) throw new Error(`database is not open: ${dbId}`);
@@ -246,12 +287,16 @@ function runExec(db, sql, params) {
   const hasParams =
     params && (Array.isArray(params) ? params.length : Object.keys(params).length);
   if (hasParams) {
-    const stmt = db.prepare(sql);
     try {
-      bindParams(stmt, params);
-      while (stmt.step()) {}
-    } finally {
-      stmt.finalize();
+      runPreparedExec(db, sql, params);
+    } catch (error) {
+      const fallbackParams = vacuumIntoFallback(sql, params);
+      if (!fallbackParams || !isCantOpen(error)) throw error;
+
+      sqlite3.config.warn(
+        "VACUUM INTO could not open its nested OPFS backup path; retrying at the OPFS root"
+      );
+      runPreparedExec(db, sql, fallbackParams);
     }
   } else {
     db.exec({ sql });
