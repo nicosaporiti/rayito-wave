@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWallet } from '@lightninglabs/wavelength-react';
 import { Backup } from './components/Backup';
 import { Brand, NetworkBadge } from './components/Brand';
@@ -6,9 +6,48 @@ import { Dashboard } from './components/Dashboard';
 import { Onboarding, Unlock } from './components/Onboarding';
 import { BoltIcon } from './components/Icons';
 
+const AUTO_LOCK_DELAY_MS = 5 * 60 * 1_000;
+const ACTIVITY_EVENTS = ['keydown', 'pointerdown', 'touchstart', 'scroll'] as const;
+
 export function App() {
-  const { phase, error } = useWallet();
+  const { phase, error, start, stop } = useWallet();
   const [pendingBackup, setPendingBackup] = useState<readonly string[] | null>(null);
+  const lockPending = useRef(false);
+
+  const lockWallet = useCallback(async (): Promise<void> => {
+    if (lockPending.current || phase !== 'ready') return;
+
+    lockPending.current = true;
+    try {
+      await stop();
+      await start();
+    } catch {
+      // The wallet hook exposes lifecycle failures through phase and error.
+    } finally {
+      lockPending.current = false;
+    }
+  }, [phase, start, stop]);
+
+  useEffect(() => {
+    if (phase !== 'ready' || pendingBackup) return;
+
+    let timer = window.setTimeout(() => void lockWallet(), AUTO_LOCK_DELAY_MS);
+    const resetTimer = (): void => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => void lockWallet(), AUTO_LOCK_DELAY_MS);
+    };
+    const lockWhenHidden = (): void => {
+      if (document.visibilityState === 'hidden') void lockWallet();
+    };
+
+    ACTIVITY_EVENTS.forEach((eventName) => window.addEventListener(eventName, resetTimer));
+    document.addEventListener('visibilitychange', lockWhenHidden);
+    return () => {
+      window.clearTimeout(timer);
+      ACTIVITY_EVENTS.forEach((eventName) => window.removeEventListener(eventName, resetTimer));
+      document.removeEventListener('visibilitychange', lockWhenHidden);
+    };
+  }, [lockWallet, pendingBackup, phase]);
 
   let content;
   if (pendingBackup) {
@@ -34,7 +73,17 @@ export function App() {
 
   return (
     <div className="app-shell">
-      <header className="app-header"><Brand /><NetworkBadge /></header>
+      <header className="app-header">
+        <Brand />
+        <div className="header-actions">
+          <NetworkBadge />
+          {phase === 'ready' && !pendingBackup && (
+            <button className="lock-button" type="button" onClick={() => void lockWallet()}>
+              Bloquear
+            </button>
+          )}
+        </div>
+      </header>
       {content}
       <footer><p>Impulsado por <a href="https://wavelength.lightning.engineering/" target="_blank" rel="noreferrer">Wavelength</a> · autocustodia sobre Ark + Lightning</p><p>Alpha · usá sólo sats de prueba</p></footer>
     </div>

@@ -25,6 +25,7 @@ import {
   type PaymentNotice,
 } from '../lib/payment-notice';
 import { receiveProgressFor } from '../lib/receive-progress';
+import { parseSatoshiAmount } from '../lib/validation';
 import { ActivityDialog, ActivityRows } from './ActivityDialog';
 import { Dialog } from './Dialog';
 import {
@@ -223,6 +224,7 @@ function ReceiveForm({ onInvoiceCreated }: ReceiveFormProps) {
   const [memo, setMemo] = useState('');
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const { receive, receivePending, receiveData, receiveError } = useWalletReceive();
+  const amountResult = parseSatoshiAmount(amount);
 
   useEffect(() => {
     if (!receivePending) return;
@@ -237,9 +239,10 @@ function ReceiveForm({ onInvoiceCreated }: ReceiveFormProps) {
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!amountResult.valid) return;
     setElapsedSeconds(0);
     try {
-      const result = await receive({ amountSat: Number(amount), memo });
+      const result = await receive({ amountSat: amountResult.amountSat, memo });
       onInvoiceCreated(result.entry.id);
     } catch { /* Error is rendered from receiveError. */ }
   };
@@ -260,6 +263,7 @@ function ReceiveForm({ onInvoiceCreated }: ReceiveFormProps) {
             <span>Monto en sats</span>
             <input
               inputMode="numeric"
+              maxLength={16}
               value={amount}
               onChange={(event) => setAmount(event.target.value.replace(/\D/g, ''))}
               placeholder="1.000"
@@ -275,8 +279,9 @@ function ReceiveForm({ onInvoiceCreated }: ReceiveFormProps) {
               disabled={receivePending}
             />
           </label>
+          {amount && !amountResult.valid && <p className="form-error" role="alert">{amountResult.error}</p>}
           {receiveError && <p className="form-error">{receiveError.message}</p>}
-          <button className="primary-button" disabled={!Number(amount) || receivePending}>
+          <button className="primary-button" disabled={!amountResult.valid || receivePending}>
             {receivePending ? `Generando · ${elapsedSeconds}s` : 'Crear factura'}
             <ArrowDownIcon />
           </button>
@@ -313,13 +318,17 @@ function SendForm() {
   const { sendPrepared, sendPending, sendError, sendData } = useWalletSend();
 
   const isLightning = destination.trim().toLowerCase().startsWith('ln');
-  const request = (): SendRequest => {
+  const amountResult = parseSatoshiAmount(amount);
+  const request = (): SendRequest | null => {
     if (isLightning) return { invoice: destination.trim() };
-    return { onchainAddress: destination.trim(), amountSat: Number(amount) };
+    if (!amountResult.valid) return null;
+    return { onchainAddress: destination.trim(), amountSat: amountResult.amountSat };
   };
   const preview = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    try { setQuote(await prepare(request())); } catch { /* Error is rendered from prepareError. */ }
+    const sendRequest = request();
+    if (!sendRequest) return;
+    try { setQuote(await prepare(sendRequest)); } catch { /* Error is rendered from prepareError. */ }
   };
   const confirmSend = async () => {
     if (!quote) return;
@@ -327,8 +336,8 @@ function SendForm() {
   };
 
   if (sendData) return <div><span className="step-label">Listo</span><h2>Pago enviado</h2><p>Se enviaron {formatSats(sendData.actualAmountSat)} sats. Podés seguir el estado en la actividad.</p></div>;
-  const missingAmount = !isLightning && !Number(amount);
-  return <div><span className="step-label">Enviar</span><h2>{quote ? 'Revisá el pago' : '¿A dónde enviamos?'}</h2>{quote ? <div className="quote"><dl><div><dt>Monto</dt><dd>{formatSats(quote.amountSat)} sats</dd></div><div><dt>Comisión estimada</dt><dd>{quote.feeKnown ? `${formatSats(quote.expectedFeeSat)} sats` : 'A confirmar'}</dd></div><div><dt>Vía</dt><dd>{quote.rail}</dd></div></dl>{quote.warning && <p className="warning-strip">{quote.warning}</p>}{sendError && <p className="form-error">{sendError.message}</p>}<button className="primary-button" onClick={() => void confirmSend()} disabled={sendPending}>{sendPending ? 'Enviando…' : 'Confirmar envío'} <ArrowUpIcon /></button><button className="text-button" onClick={() => setQuote(null)}>Editar</button></div> : <form onSubmit={(event) => void preview(event)}><label className="field"><span>Factura Lightning o dirección</span><textarea rows={3} value={destination} onChange={(event) => setDestination(event.target.value)} placeholder="lnbc… o tb1…" /></label>{!isLightning && <label className="field"><span>Monto en sats</span><input inputMode="numeric" value={amount} onChange={(event) => setAmount(event.target.value.replace(/\D/g, ''))} /></label>}{prepareError && <p className="form-error">{prepareError.message}</p>}<button className="primary-button" disabled={!destination.trim() || missingAmount || preparePending}>{preparePending ? 'Cotizando…' : 'Revisar pago'} <ArrowUpIcon /></button></form>}</div>;
+  const invalidAmount = !isLightning && !amountResult.valid;
+  return <div><span className="step-label">Enviar</span><h2>{quote ? 'Revisá el pago' : '¿A dónde enviamos?'}</h2>{quote ? <div className="quote"><dl><div><dt>Monto</dt><dd>{formatSats(quote.amountSat)} sats</dd></div><div><dt>Comisión estimada</dt><dd>{quote.feeKnown ? `${formatSats(quote.expectedFeeSat)} sats` : 'A confirmar'}</dd></div><div><dt>Vía</dt><dd>{quote.rail}</dd></div></dl>{quote.warning && <p className="warning-strip">{quote.warning}</p>}{sendError && <p className="form-error">{sendError.message}</p>}<button className="primary-button" onClick={() => void confirmSend()} disabled={sendPending}>{sendPending ? 'Enviando…' : 'Confirmar envío'} <ArrowUpIcon /></button><button className="text-button" onClick={() => setQuote(null)}>Editar</button></div> : <form onSubmit={(event) => void preview(event)}><label className="field"><span>Factura Lightning o dirección</span><textarea rows={3} value={destination} onChange={(event) => setDestination(event.target.value)} placeholder="lnbc… o tb1…" /></label>{!isLightning && <label className="field"><span>Monto en sats</span><input inputMode="numeric" maxLength={16} value={amount} onChange={(event) => setAmount(event.target.value.replace(/\D/g, ''))} /></label>}{amount && invalidAmount && <p className="form-error" role="alert">{amountResult.error}</p>}{prepareError && <p className="form-error">{prepareError.message}</p>}<button className="primary-button" disabled={!destination.trim() || invalidAmount || preparePending}>{preparePending ? 'Cotizando…' : 'Revisar pago'} <ArrowUpIcon /></button></form>}</div>;
 }
 
 function ResultBox({ label, value }: { label: string; value: string }) {

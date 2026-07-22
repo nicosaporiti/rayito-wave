@@ -204,6 +204,30 @@ describe('Dashboard receive flow', () => {
     expect(screen.getByText('2.100 sats ya están disponibles.')).toBeInTheDocument();
   });
 
+  it('rejects out-of-range Lightning and on-chain amounts before submission', () => {
+    render(<Dashboard />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Recibir' }));
+    fireEvent.change(screen.getByLabelText('Monto en sats'), {
+      target: { value: '9999999999999999' },
+    });
+
+    expect(screen.getByRole('alert')).toHaveTextContent('supera el máximo posible');
+    expect(screen.getByRole('button', { name: 'Crear factura' })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar' }));
+    fireEvent.change(screen.getByLabelText('Factura Lightning o dirección'), {
+      target: { value: 'tb1qdestination' },
+    });
+    fireEvent.change(screen.getByLabelText('Monto en sats'), {
+      target: { value: '9999999999999999' },
+    });
+
+    expect(screen.getByRole('alert')).toHaveTextContent('supera el máximo posible');
+    expect(screen.getByRole('button', { name: 'Revisar pago' })).toBeDisabled();
+  });
+
   it('shows five recent movements and supports history filters and full details', async () => {
     const entries = [
       historyEntry(1, 'receive', 'lightning'),

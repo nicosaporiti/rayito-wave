@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { ArrowUpIcon, CopyIcon } from './Icons';
+import { useEffect, useState, type FormEvent } from 'react';
+import { ArrowUpIcon } from './Icons';
 
 type BackupProps = {
   mnemonic: readonly string[];
@@ -10,21 +10,13 @@ const CHECK_INDEXES = [3, 11, 23] as const;
 
 export function Backup({ mnemonic, onConfirmed }: BackupProps) {
   const [answers, setAnswers] = useState<Record<number, string>>({});
-  const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const phrase = useMemo(() => mnemonic.join(' '), [mnemonic]);
 
   useEffect(() => {
     const guard = (event: BeforeUnloadEvent) => { event.preventDefault(); };
     window.addEventListener('beforeunload', guard);
     return () => window.removeEventListener('beforeunload', guard);
   }, []);
-
-  const copy = async () => {
-    await navigator.clipboard.writeText(phrase);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
-  };
 
   const confirm = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -41,7 +33,6 @@ export function Backup({ mnemonic, onConfirmed }: BackupProps) {
         <ol className="words-grid">
           {mnemonic.map((word, index) => <li key={`${word}-${index}`}><span>{index + 1}</span>{word}</li>)}
         </ol>
-        <button className="copy-button" type="button" onClick={() => void copy()}><CopyIcon /> {copied ? 'Copiada' : 'Copiar frase'}</button>
 
         <form className="backup-check" onSubmit={confirm}>
           <h2>Confirmemos tu copia</h2>

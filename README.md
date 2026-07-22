@@ -39,4 +39,9 @@ La app usa **Signet** y el SDK está en estado alpha: sólo se deben usar sats d
 
 Los ocho archivos requeridos viven en `public/wavewalletdk/v0.1.0/`. Al actualizar `@lightninglabs/wavelength-web`, también hay que descargar el bundle WASM de la versión indicada por `RUNTIME_MANIFEST_VERSION`; mezclar versiones no es seguro.
 
+`wavewalletdk.wasm` se versiona con Git LFS porque supera el límite de 100 MiB
+por archivo de GitHub. Instalá Git LFS y ejecutá `git lfs install` antes de
+clonar o publicar el repositorio; la variante comprimida permanece en Git
+normal.
+
 Documentación relevante: [quickstart web](https://wavelength.lightning.engineering/web/get-started/quickstart/), [claves y recuperación](https://wavelength.lightning.engineering/concepts/keys-backup-and-recovery/), [runtime assets](https://wavelength.lightning.engineering/web/get-started/hosting-runtime-assets/) y [cross-origin isolation](https://wavelength.lightning.engineering/web/get-started/cross-origin-isolation/).
