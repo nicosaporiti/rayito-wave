@@ -82,7 +82,7 @@ export function App() {
         content = <Dashboard />;
         break;
       case 'error':
-        content = <FatalError message={error?.message ?? 'No pudimos iniciar la wallet.'} />;
+        content = <FatalError error={error ?? new Error('No pudimos iniciar la wallet.')} />;
         break;
       default:
         content = <Loading phase={phase} />;
@@ -118,6 +118,35 @@ function Loading({ phase }: { phase: string }) {
   return <main className="center-stage"><div className="loader"><span><BoltIcon /></span><p>{labels[phase] ?? 'Preparando…'}</p><small>Las llaves nunca salen de este dispositivo</small></div></main>;
 }
 
-function FatalError({ message }: { message: string }) {
-  return <main className="center-stage"><section className="unlock-card"><p className="eyebrow">Algo no arrancó bien</p><h1>No pudimos abrir Rayito</h1><p className="form-error">{message}</p><button className="primary-button" onClick={() => window.location.reload()}>Reintentar</button></section></main>;
+function isWorkerError(error: Error): error is Error & { readonly code: 'worker_error' } {
+  return 'code' in error && error.code === 'worker_error';
+}
+
+function FatalError({ error }: { error: Error }) {
+  const workerFailed = isWorkerError(error);
+  const retry = (): void => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('retry', Date.now().toString());
+    window.location.replace(url);
+  };
+
+  return (
+    <main className="center-stage">
+      <section className="unlock-card">
+        <p className="eyebrow">Algo no arrancó bien</p>
+        <h1>No pudimos abrir Rayito</h1>
+        <p className="form-error">
+          {workerFailed
+            ? 'Chrome no pudo iniciar el motor local. Puede ser una versión anterior guardada en caché o una extensión que bloquea workers.'
+            : error.message}
+        </p>
+        {workerFailed && (
+          <p>
+            Reintentá primero. Si vuelve a pasar, permití workers para este sitio o probá una ventana sin extensiones. No borres los datos del sitio si no guardaste tus 24 palabras.
+          </p>
+        )}
+        <button className="primary-button" onClick={retry}>Reintentar</button>
+      </section>
+    </main>
+  );
 }

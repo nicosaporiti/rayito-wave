@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 
 const wallet = vi.hoisted(() => ({
+  error: null as Error | null,
   phase: 'ready',
   recoveryStatus: 'idle',
   start: vi.fn(async () => undefined),
@@ -14,7 +15,7 @@ const wallet = vi.hoisted(() => ({
 
 vi.mock('@lightninglabs/wavelength-react', () => ({
   useWallet: () => ({
-    error: null,
+    error: wallet.error,
     phase: wallet.phase,
     start: wallet.start,
     stop: wallet.stop,
@@ -46,6 +47,7 @@ vi.mock('./components/Icons', () => ({ BoltIcon: () => <span /> }));
 
 describe('App wallet locking', () => {
   beforeEach(() => {
+    wallet.error = null;
     wallet.phase = 'ready';
     wallet.recoveryStatus = 'idle';
     wallet.start.mockClear();
@@ -141,5 +143,17 @@ describe('App wallet locking', () => {
 
     await waitFor(() => expect(wallet.stop).toHaveBeenCalledOnce());
     expect(wallet.start).toHaveBeenCalledOnce();
+  });
+
+  it('explains how to recover from a blocked Chrome worker without deleting wallet data', () => {
+    wallet.phase = 'error';
+    wallet.error = Object.assign(new Error('Worker runtime exited unexpectedly'), {
+      code: 'worker_error',
+    });
+
+    render(<App />);
+
+    expect(screen.getByText(/Chrome no pudo iniciar el motor local/)).toBeInTheDocument();
+    expect(screen.getByText(/No borres los datos del sitio/)).toBeInTheDocument();
   });
 });
