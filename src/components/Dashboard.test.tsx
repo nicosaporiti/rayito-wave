@@ -2,15 +2,17 @@
 
 import '@testing-library/jest-dom/vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import type { Entry, ReceiveResult } from '@lightninglabs/wavelength-react';
+import type { DepositResult, Entry, ReceiveResult } from '@lightninglabs/wavelength-react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Dashboard } from './Dashboard';
 
 const wallet = vi.hoisted(() => ({
   activity: [] as Entry[],
+  depositData: null as DepositResult | null,
   history: [] as Entry[],
   receiveResult: null as ReceiveResult | null,
 }));
+const deposit = vi.hoisted(() => vi.fn());
 const listActivity = vi.hoisted(() => vi.fn());
 
 type MutableVisualViewport = EventTarget & {
@@ -29,7 +31,11 @@ vi.mock('@lightninglabs/wavelength-react', async () => {
     useWalletActivity: () => wallet.activity,
     useWalletBalance: () => ({ confirmedSat: 0, pendingInSat: 0, pendingOutSat: 0 }),
     useWalletDeposit: () => ({
-      deposit: vi.fn(), depositData: null, depositError: null, depositPending: false,
+      deposit,
+      depositData: wallet.depositData,
+      depositError: null,
+      depositPending: false,
+      resetDeposit: vi.fn(),
     }),
     useWalletInfo: () => ({ blockHeight: 314_220 }),
     useWalletList: () => ({
@@ -122,7 +128,9 @@ describe('Dashboard receive flow', () => {
       value: visualViewport,
     });
     wallet.activity = [];
+    wallet.depositData = null;
     wallet.history = [];
+    deposit.mockReset();
     listActivity.mockReset();
     listActivity.mockImplementation(async () => ({
       activity: {
@@ -226,6 +234,54 @@ describe('Dashboard receive flow', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent('supera el máximo posible');
     expect(screen.getByRole('button', { name: 'Revisar pago' })).toBeDisabled();
+  });
+
+  it('guides a first-time user from an empty wallet to the Signet faucet', async () => {
+    const depositResult: DepositResult = {
+      address: 'tb1qrayitosignetexample',
+      entry: historyEntry(8, 'deposit', 'onchain'),
+    };
+    deposit.mockResolvedValue(depositResult);
+    const view = render(<Dashboard />);
+
+    expect(screen.getByText('Probá Rayito con sats de prueba')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Conseguir sats de prueba' }));
+
+    const requestDialog = screen.getByRole('dialog', { name: 'Fondear wallet' });
+    expect(within(requestDialog).getByText(/Estos sats no tienen valor real/))
+      .toBeInTheDocument();
+    fireEvent.click(within(requestDialog).getByRole('button', {
+      name: 'Generar dirección Signet',
+    }));
+    await waitFor(() => expect(deposit).toHaveBeenCalledOnce());
+
+    wallet.depositData = depositResult;
+    view.rerender(<Dashboard />);
+
+    const guideDialog = screen.getByRole('dialog', { name: 'Fondear wallet' });
+    expect(within(guideDialog).getByText(depositResult.address)).toBeInTheDocument();
+    const steps = within(guideDialog).getByRole('list');
+    expect(steps).toHaveTextContent('Copiá la dirección');
+    expect(steps).toHaveTextContent('Abrí el faucet');
+    expect(steps).toHaveTextContent('Pegá la dirección');
+    expect(steps).toHaveTextContent('Seguí el depósito');
+
+    const faucetLink = within(guideDialog).getByRole('link', {
+      name: 'Abrir Bitcoin Signet Faucet en una pestaña nueva',
+    });
+    expect(faucetLink).toHaveAttribute('href', 'https://bitcoinsignetfaucet.com/');
+    expect(faucetLink).toHaveAttribute('target', '_blank');
+    expect(faucetLink).toHaveAttribute('rel', 'noopener noreferrer');
+
+    const mempoolLink = within(guideDialog).getByRole('link', {
+      name: 'Seguir esta dirección en mempool Signet en una pestaña nueva',
+    });
+    expect(mempoolLink).toHaveAttribute(
+      'href',
+      `https://mempool.space/signet/address/${depositResult.address}`,
+    );
+    expect(mempoolLink).toHaveAttribute('target', '_blank');
+    expect(mempoolLink).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
   it('shows five recent movements and supports history filters and full details', async () => {

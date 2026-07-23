@@ -91,7 +91,8 @@ describe('App wallet locking', () => {
     expect(wallet.start).toHaveBeenCalledOnce();
   });
 
-  it('locks immediately when the page becomes hidden', async () => {
+  it('keeps the wallet open when the page is hidden before the idle deadline', async () => {
+    vi.useFakeTimers();
     render(<App />);
     Object.defineProperty(document, 'visibilityState', {
       configurable: true,
@@ -99,8 +100,79 @@ describe('App wallet locking', () => {
     });
 
     fireEvent(document, new Event('visibilitychange'));
+    await act(async () => Promise.resolve());
 
-    await waitFor(() => expect(wallet.stop).toHaveBeenCalledOnce());
+    expect(wallet.stop).not.toHaveBeenCalled();
+    expect(wallet.start).not.toHaveBeenCalled();
+
+    await act(async () => {
+      vi.advanceTimersByTime(4 * 60 * 1_000);
+      await Promise.resolve();
+    });
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      value: 'visible',
+    });
+    fireEvent(document, new Event('visibilitychange'));
+    await act(async () => Promise.resolve());
+
+    expect(wallet.stop).not.toHaveBeenCalled();
+    expect(wallet.start).not.toHaveBeenCalled();
+
+    await act(async () => {
+      vi.advanceTimersByTime(60 * 1_000);
+      await Promise.resolve();
+    });
+
+    expect(wallet.stop).toHaveBeenCalledOnce();
+    expect(wallet.start).toHaveBeenCalledOnce();
+  });
+
+  it('locks on return when background timer execution was suspended past the deadline', async () => {
+    vi.useFakeTimers();
+    const startedAt = new Date('2026-07-23T00:00:00.000Z');
+    vi.setSystemTime(startedAt);
+    render(<App />);
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      value: 'hidden',
+    });
+    fireEvent(document, new Event('visibilitychange'));
+
+    vi.setSystemTime(startedAt.getTime() + 5 * 60 * 1_000 + 1);
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      value: 'visible',
+    });
+    fireEvent(document, new Event('visibilitychange'));
+    await act(async () => Promise.resolve());
+
+    expect(wallet.stop).toHaveBeenCalledOnce();
+    expect(wallet.start).toHaveBeenCalledOnce();
+  });
+
+  it('renews the idle deadline after user activity', async () => {
+    vi.useFakeTimers();
+    render(<App />);
+
+    await act(async () => {
+      vi.advanceTimersByTime(4 * 60 * 1_000);
+    });
+    fireEvent.pointerDown(window);
+    await act(async () => {
+      vi.advanceTimersByTime(4 * 60 * 1_000);
+      await Promise.resolve();
+    });
+
+    expect(wallet.stop).not.toHaveBeenCalled();
+    expect(wallet.start).not.toHaveBeenCalled();
+
+    await act(async () => {
+      vi.advanceTimersByTime(60 * 1_000);
+      await Promise.resolve();
+    });
+
+    expect(wallet.stop).toHaveBeenCalledOnce();
     expect(wallet.start).toHaveBeenCalledOnce();
   });
 
@@ -130,7 +202,8 @@ describe('App wallet locking', () => {
     expect(unloadEvent.defaultPrevented).toBe(true);
   });
 
-  it('locks when recovery finishes while the page is already hidden', async () => {
+  it('grants a full idle timeout when recovery finishes while the page is hidden', async () => {
+    vi.useFakeTimers();
     wallet.recoveryStatus = 'restoring';
     const view = render(<App />);
     Object.defineProperty(document, 'visibilityState', {
@@ -141,7 +214,16 @@ describe('App wallet locking', () => {
     wallet.recoveryStatus = 'done';
     view.rerender(<App />);
 
-    await waitFor(() => expect(wallet.stop).toHaveBeenCalledOnce());
+    await act(async () => Promise.resolve());
+    expect(wallet.stop).not.toHaveBeenCalled();
+    expect(wallet.start).not.toHaveBeenCalled();
+
+    await act(async () => {
+      vi.advanceTimersByTime(5 * 60 * 1_000);
+      await Promise.resolve();
+    });
+
+    expect(wallet.stop).toHaveBeenCalledOnce();
     expect(wallet.start).toHaveBeenCalledOnce();
   });
 

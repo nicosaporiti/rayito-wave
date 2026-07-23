@@ -41,6 +41,7 @@ import {
   LinkIcon,
 } from './Icons';
 import { LightningInvoiceResult } from './LightningInvoiceResult';
+import { SignetFaucetGuide } from './SignetFaucetGuide';
 
 type WalletAction = 'receive' | 'deposit' | 'send';
 type Action = WalletAction | null;
@@ -173,7 +174,15 @@ export function Dashboard() {
           )}
         </div>
         {activity.length === 0 ? (
-          <div className="empty-activity"><span><ArrowDownIcon /></span><h3>Tu wallet está lista</h3><p>Recibí sats por Lightning o pedí una dirección para fondearla desde Bitcoin.</p></div>
+          <div className="empty-activity">
+            <span><ArrowDownIcon /></span>
+            <h3>Probá Rayito con sats de prueba</h3>
+            <p>Signet es una red de prueba: sus sats no tienen valor real. Generá una dirección y pedilos gratis en un faucet.</p>
+            <button type="button" onClick={() => openAction('deposit')}>
+              Conseguir sats de prueba
+              <ChevronRightIcon />
+            </button>
+          </div>
         ) : (
           <ActivityRows
             entries={recentActivity(activity)}
@@ -308,10 +317,36 @@ function ReceiveForm({ onInvoiceCreated }: ReceiveFormProps) {
 
 function DepositForm() {
   const { deposit, depositPending, depositData, depositError } = useWalletDeposit();
-  const requestDeposit = async () => {
+  const requestDeposit = async (): Promise<void> => {
     try { await deposit(); } catch { /* Error is rendered from depositError. */ }
   };
-  return <div><span className="step-label">Bitcoin on-chain</span><h2>Fondear tu wallet</h2><p>Generá una dirección de ingreso en Signet. El saldo entra a Ark después de la confirmación.</p>{depositData ? <ResultBox label="Dirección Signet" value={depositData.address} /> : <>{depositError && <p className="form-error">{depositError.message}</p>}<button className="primary-button" onClick={() => void requestDeposit()} disabled={depositPending}>{depositPending ? 'Generando…' : 'Generar dirección'} <LinkIcon /></button></>}</div>;
+
+  return (
+    <div className="deposit-view">
+      <span className="step-label">Bitcoin on-chain · Signet</span>
+      <h2>Fondear tu wallet</h2>
+      <p>Rayito usa Signet, una red de prueba de Bitcoin. Estos sats no tienen valor real y no sirven en mainnet.</p>
+      {depositData ? (
+        <>
+          <ResultBox label="Dirección Signet" value={depositData.address} />
+          <SignetFaucetGuide address={depositData.address} />
+        </>
+      ) : (
+        <>
+          <p className="deposit-hint">Generá una dirección para pedir sats de prueba. Cuando se confirme el depósito, el saldo entra a Ark y queda listo para usar.</p>
+          {depositError && <p className="form-error">{depositError.message}</p>}
+          <button
+            className="primary-button"
+            onClick={() => void requestDeposit()}
+            disabled={depositPending}
+          >
+            {depositPending ? 'Generando…' : 'Generar dirección Signet'}
+            <LinkIcon />
+          </button>
+        </>
+      )}
+    </div>
+  );
 }
 
 function SendForm() {

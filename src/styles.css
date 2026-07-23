@@ -148,6 +148,27 @@ form { display: grid; gap: 17px; }
 .result-box code { max-height: 100px; overflow: auto; word-break: break-all; white-space: normal; font-size: 10px; line-height: 1.55; }
 .result-box button { justify-self: end; display: flex; align-items: center; gap: 6px; border: 1px solid rgba(255, 255, 255, .2); border-radius: 8px; background: transparent; color: #fff; padding: 7px 10px; cursor: pointer; font-size: 9px; }
 .result-box button svg { width: 14px; }
+.deposit-hint { margin: 16px 0 14px !important; padding: 12px 14px; border-left: 3px solid var(--orange); background: #f0ead9; }
+.signet-guide { position: relative; overflow: hidden; margin-top: 16px; padding: 18px; border: 1px solid #d9c36b; border-radius: 13px; background: linear-gradient(145deg, #fff5c9, #f7edc5); }
+.signet-guide::after { content: ''; position: absolute; width: 110px; height: 110px; right: -61px; top: -69px; border: 1px solid rgba(239, 108, 51, .17); border-radius: 50%; box-shadow: 0 0 0 18px rgba(239, 108, 51, .035); pointer-events: none; }
+.signet-guide-kicker { position: relative; z-index: 1; margin: 0; color: var(--orange); font-size: 9px; font-weight: 850; letter-spacing: .13em; text-transform: uppercase; }
+.signet-guide h3 { position: relative; z-index: 1; margin: 4px 0 16px; font: 520 24px/1.1 'Newsreader Variable', serif; letter-spacing: -.025em; }
+.signet-guide ol { margin: 0; padding: 0; display: grid; gap: 10px; list-style: none; }
+.signet-guide li { position: relative; display: grid; grid-template-columns: 25px minmax(0, 1fr); gap: 10px; align-items: start; }
+.signet-guide li:not(:last-child)::after { content: ''; position: absolute; left: 12px; top: 27px; bottom: -10px; border-left: 1px dashed rgba(27, 27, 23, .2); }
+.signet-guide li > span { width: 25px; height: 25px; display: grid; place-items: center; border: 1px solid rgba(27, 27, 23, .22); border-radius: 50%; background: rgba(255, 255, 255, .52); font-size: 9px; font-weight: 850; }
+.signet-guide li p { margin: 2px 0 0; color: #666052; font-size: 10px; line-height: 1.5; }
+.signet-guide li strong { color: var(--ink); }
+.signet-guide-actions { margin-top: 17px; display: grid; gap: 9px; }
+.signet-faucet-link, .signet-mempool-link { padding: 11px 14px; display: flex; align-items: center; justify-content: center; gap: 9px; border: 1px solid var(--ink); border-radius: 10px; text-decoration: none; font-size: 11px; font-weight: 850; transition: transform .15s, box-shadow .15s, background .15s; }
+.signet-faucet-link { min-height: 47px; color: var(--paper); background: var(--ink); box-shadow: 3px 3px 0 var(--orange); }
+.signet-faucet-link:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--orange); }
+.signet-faucet-link:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--orange); }
+.signet-mempool-link { min-height: 43px; color: var(--ink); background: rgba(255, 255, 255, .4); }
+.signet-mempool-link:hover { background: rgba(255, 255, 255, .75); transform: translateY(-1px); }
+.signet-faucet-link:focus-visible, .signet-mempool-link:focus-visible { outline: 3px solid rgba(239, 108, 51, .35); outline-offset: 3px; }
+.signet-guide-actions svg { width: 17px; height: 17px; }
+.signet-guide .signet-guide-note { margin: 12px 0 0; color: #81785f; text-align: center; font-size: 8px; line-height: 1.5; }
 .invoice-result { display: grid; gap: 13px; margin-top: 16px; }
 .invoice-status { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid rgba(25, 78, 58, .16); border-radius: 11px; background: #e8efe9; }
 .invoice-status-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: #3f986b; box-shadow: 0 0 0 0 rgba(63, 152, 107, .4); animation: invoice-pulse 1.7s ease-out infinite; }
@@ -190,6 +211,10 @@ form { display: grid; gap: 17px; }
 .empty-activity svg { width: 18px; }
 .empty-activity h3 { margin: 0; font: 520 22px 'Newsreader Variable', serif; }
 .empty-activity p { max-width: 430px; margin: 9px auto 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.empty-activity > button { min-height: 40px; margin: 18px auto 0; padding: 9px 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--ink); border-radius: 10px; color: var(--ink); background: var(--bolt); box-shadow: 2px 2px 0 var(--ink); cursor: pointer; font-size: 10px; font-weight: 850; transition: transform .15s, box-shadow .15s; }
+.empty-activity > button:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--ink); }
+.empty-activity > button:focus-visible { outline: 3px solid rgba(239, 108, 51, .3); outline-offset: 3px; }
+.empty-activity > button svg { width: 15px; }
 .activity-list { margin: 0; padding: 0; list-style: none; }
 .activity-list li { border-bottom: 1px solid var(--line); }
 .activity-list li:last-child { border-bottom: 0; }

@@ -32,26 +32,37 @@ export function App() {
 
   useEffect(() => {
     if (phase !== 'ready' || pendingBackup || isRecovering) return;
-    if (document.visibilityState === 'hidden') {
-      void lockWallet();
-      return;
-    }
 
-    let timer = window.setTimeout(() => void lockWallet(), AUTO_LOCK_DELAY_MS);
-    const resetTimer = (): void => {
+    let idleDeadline = Date.now() + AUTO_LOCK_DELAY_MS;
+    let timer = 0;
+    const scheduleLock = (): void => {
       window.clearTimeout(timer);
-      timer = window.setTimeout(() => void lockWallet(), AUTO_LOCK_DELAY_MS);
+      timer = window.setTimeout(
+        () => void lockWallet(),
+        Math.max(0, idleDeadline - Date.now()),
+      );
     };
-    const lockWhenHidden = (): void => {
-      if (document.visibilityState === 'hidden') void lockWallet();
+    const resetTimer = (): void => {
+      idleDeadline = Date.now() + AUTO_LOCK_DELAY_MS;
+      scheduleLock();
+    };
+    const checkIdleTimeWhenVisible = (): void => {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() >= idleDeadline) {
+        window.clearTimeout(timer);
+        void lockWallet();
+        return;
+      }
+      scheduleLock();
     };
 
+    scheduleLock();
     ACTIVITY_EVENTS.forEach((eventName) => window.addEventListener(eventName, resetTimer));
-    document.addEventListener('visibilitychange', lockWhenHidden);
+    document.addEventListener('visibilitychange', checkIdleTimeWhenVisible);
     return () => {
       window.clearTimeout(timer);
       ACTIVITY_EVENTS.forEach((eventName) => window.removeEventListener(eventName, resetTimer));
-      document.removeEventListener('visibilitychange', lockWhenHidden);
+      document.removeEventListener('visibilitychange', checkIdleTimeWhenVisible);
     };
   }, [isRecovering, lockWallet, pendingBackup, phase]);
 
