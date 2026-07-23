@@ -1769,6 +1769,169 @@ form {
   gap: 8px;
 }
 
+.scan-invoice-button {
+  min-height: 47px;
+  margin-top: -4px;
+  gap: 9px;
+  color: var(--foreground);
+  background: rgba(255, 212, 59, 0.04);
+  border-color: rgba(255, 212, 59, 0.22);
+  border-radius: 14px;
+  font-size: 11px;
+  font-weight: 680;
+}
+
+.scan-invoice-button:hover {
+  color: var(--rayito);
+  background: rgba(255, 212, 59, 0.08);
+  border-color: rgba(255, 212, 59, 0.38);
+}
+
+.scan-invoice-button svg {
+  width: 17px;
+  height: 17px;
+}
+
+.qr-scanner {
+  margin-top: 22px;
+  display: grid;
+  gap: 13px;
+}
+
+.qr-scanner-heading h3 {
+  margin: 6px 0 7px;
+  color: var(--foreground);
+  font-size: 22px;
+  font-weight: 620;
+  letter-spacing: -0.035em;
+}
+
+.qr-scanner-heading p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.qr-camera {
+  position: relative;
+  min-height: 284px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(255, 212, 59, 0.08), transparent 44%),
+    #070909;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 20px;
+}
+
+.qr-camera-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.qr-camera-frame {
+  position: relative;
+  z-index: 1;
+  width: min(210px, 65%);
+  aspect-ratio: 1;
+}
+
+.qr-camera-frame > i {
+  position: absolute;
+  width: 42px;
+  height: 42px;
+  border-color: var(--rayito);
+  border-style: solid;
+  filter: drop-shadow(0 0 5px rgba(255, 212, 59, 0.32));
+}
+
+.qr-camera-frame > i:nth-child(1) {
+  top: 0;
+  left: 0;
+  border-width: 3px 0 0 3px;
+  border-radius: 12px 0 0;
+}
+
+.qr-camera-frame > i:nth-child(2) {
+  top: 0;
+  right: 0;
+  border-width: 3px 3px 0 0;
+  border-radius: 0 12px 0 0;
+}
+
+.qr-camera-frame > i:nth-child(3) {
+  right: 0;
+  bottom: 0;
+  border-width: 0 3px 3px 0;
+  border-radius: 0 0 12px;
+}
+
+.qr-camera-frame > i:nth-child(4) {
+  bottom: 0;
+  left: 0;
+  border-width: 0 0 3px 3px;
+  border-radius: 0 0 0 12px;
+}
+
+.qr-camera-scanline {
+  position: absolute;
+  right: 8px;
+  left: 8px;
+  height: 1px;
+  background: var(--rayito);
+  box-shadow: 0 0 10px rgba(255, 212, 59, 0.8);
+  animation: qr-scan 2.2s ease-in-out infinite;
+}
+
+.qr-camera-status {
+  position: relative;
+  z-index: 2;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-soft);
+  background: rgba(8, 10, 10, 0.8);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  font-size: 10px;
+  backdrop-filter: blur(8px);
+}
+
+.qr-camera-status svg,
+.qr-scanner-live svg {
+  width: 15px;
+  height: 15px;
+}
+
+.qr-scanner-live {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: var(--text-soft);
+  font-size: 10px;
+}
+
+.qr-scanner-live svg {
+  color: var(--rayito);
+}
+
+.qr-scanner-cancel {
+  width: 100%;
+}
+
+@keyframes qr-scan {
+  0%, 100% { top: 12px; opacity: 0.35; }
+  50% { top: calc(100% - 13px); opacity: 1; }
+}
+
 .signet-guide {
   margin-top: 18px;
   padding: 17px;
@@ -2546,6 +2709,10 @@ form {
 
   .action-panel h2 {
     font-size: 31px;
+  }
+
+  .qr-camera {
+    min-height: min(78vw, 330px);
   }
 
   .panel-close {

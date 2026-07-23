@@ -37,6 +37,7 @@ import {
   ArrowDownIcon,
   ArrowUpIcon,
   ActivityIcon,
+  CameraIcon,
   CheckIcon,
   ChevronRightIcon,
   CopyIcon,
@@ -44,6 +45,7 @@ import {
   LinkIcon,
 } from './Icons';
 import { LightningInvoiceResult } from './LightningInvoiceResult';
+import { QrInvoiceScanner } from './QrInvoiceScanner';
 import { SignetFaucetGuide } from './SignetFaucetGuide';
 import {
   Alert,
@@ -556,6 +558,7 @@ function SendForm() {
   const [destination, setDestination] = useState('');
   const [amount, setAmount] = useState('');
   const [quote, setQuote] = useState<PrepareSendResult | null>(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const { prepare, preparePending, prepareError } = useWalletPrepareSend();
   const { sendPrepared, sendPending, sendError, sendData } = useWalletSend();
 
@@ -576,6 +579,11 @@ function SendForm() {
     if (!quote) return;
     try { await sendPrepared(quote); } catch { /* Error is rendered from sendError. */ }
   };
+  const useScannedInvoice = useCallback((invoice: string): void => {
+    setDestination(invoice);
+    setAmount('');
+    setScannerOpen(false);
+  }, []);
 
   if (sendData) {
     return (
@@ -594,11 +602,15 @@ function SendForm() {
   }
 
   const invalidAmount = !isLightning && !amountResult.valid;
+  let heading = '¿A dónde enviamos?';
+  if (scannerOpen) heading = 'Pagar con QR';
+  if (quote) heading = 'Revisá el pago';
+
   return (
     <div className="send-view">
       <span className="step-label">Enviar</span>
-      <h2>{quote ? 'Revisá el pago' : '¿A dónde enviamos?'}</h2>
-      {quote ? (
+      <h2>{heading}</h2>
+      {quote && (
         <div className="quote">
           <dl className="quote-summary">
             <div>
@@ -644,7 +656,14 @@ function SendForm() {
             </Button>
           </div>
         </div>
-      ) : (
+      )}
+      {!quote && scannerOpen && (
+        <QrInvoiceScanner
+          onCancel={() => setScannerOpen(false)}
+          onScan={useScannedInvoice}
+        />
+      )}
+      {!quote && !scannerOpen && (
         <form onSubmit={(event) => void preview(event)}>
           <label className="field">
             <span>Factura Lightning o dirección</span>
@@ -655,6 +674,15 @@ function SendForm() {
               placeholder="lnbc… o tb1…"
             />
           </label>
+          <Button
+            className="scan-invoice-button"
+            type="button"
+            variant="outline"
+            onClick={() => setScannerOpen(true)}
+          >
+            <CameraIcon />
+            Escanear QR con la cámara
+          </Button>
           {!isLightning && (
             <label className="field">
               <span>Monto en sats</span>

@@ -4,6 +4,7 @@ import '@testing-library/jest-dom/vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { DepositResult, Entry, ReceiveResult } from '@lightninglabs/wavelength-react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { VALID_BOLT11_INVOICE, VALID_LNURL } from '../test/fixtures';
 import { Dashboard } from './Dashboard';
 
 const wallet = vi.hoisted(() => ({
@@ -14,6 +15,10 @@ const wallet = vi.hoisted(() => ({
 }));
 const deposit = vi.hoisted(() => vi.fn());
 const listActivity = vi.hoisted(() => vi.fn());
+const qrScanner = vi.hoisted(() => ({
+  callback: null as null | ((result?: { getText: () => string }) => void),
+  stop: vi.fn(),
+}));
 
 type MutableVisualViewport = EventTarget & {
   height: number;
@@ -64,6 +69,24 @@ vi.mock('@lightninglabs/wavelength-react', async () => {
     }),
   };
 });
+
+vi.mock('@zxing/browser', () => ({
+  BrowserQRCodeReader: class {
+    async decodeFromConstraints(
+      _constraints: MediaStreamConstraints,
+      _video: HTMLVideoElement,
+      callback: (
+        result: { getText: () => string } | undefined,
+        error: unknown,
+        controls: { stop: () => void },
+      ) => void,
+    ): Promise<{ stop: () => void }> {
+      const controls = { stop: qrScanner.stop };
+      qrScanner.callback = (result) => callback(result, undefined, controls);
+      return controls;
+    }
+  },
+}));
 
 function receiveEntry(status: Entry['status']): Entry {
   return {
@@ -145,6 +168,12 @@ describe('Dashboard receive flow', () => {
       entry: receiveEntry('pending'),
       invoice: 'lntbs21u1rayitoexample',
     };
+    qrScanner.callback = null;
+    qrScanner.stop.mockReset();
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: { getUserMedia: vi.fn() },
+    });
   });
 
   afterEach(() => {
@@ -234,6 +263,40 @@ describe('Dashboard receive flow', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent('supera el máximo posible');
     expect(screen.getByRole('button', { name: 'Revisar pago' })).toBeDisabled();
+  });
+
+  it('keeps scanning invalid payloads and fills the form after a valid BOLT11 QR', async () => {
+    render(<Dashboard />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Escanear QR con la cámara' }));
+
+    expect(screen.getByLabelText('Vista de la cámara para escanear QR')).toBeInTheDocument();
+    await waitFor(() => expect(qrScanner.callback).not.toBeNull());
+
+    act(() => {
+      qrScanner.callback?.({
+        getText: () => VALID_LNURL,
+      });
+    });
+
+    expect(screen.getByLabelText('Vista de la cámara para escanear QR')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Ese QR no contiene una factura Lightning.',
+    );
+    expect(qrScanner.stop).not.toHaveBeenCalled();
+
+    act(() => {
+      qrScanner.callback?.({
+        getText: () => `LIGHTNING:${VALID_BOLT11_INVOICE}`,
+      });
+    });
+
+    expect(screen.queryByLabelText('Vista de la cámara para escanear QR'))
+      .not.toBeInTheDocument();
+    expect(screen.getByLabelText('Factura Lightning o dirección'))
+      .toHaveValue(VALID_BOLT11_INVOICE);
+    expect(qrScanner.stop).toHaveBeenCalled();
   });
 
   it('keeps the balance and movements in separate viewport views', () => {

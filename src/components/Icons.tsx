@@ -2,12 +2,14 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowUp,
+  Camera,
   Check,
   ChevronRight,
   Copy,
   House,
   Link2,
   ReceiptText,
+  ScanLine,
   Zap,
   type LucideProps,
 } from 'lucide-react';
@@ -52,4 +54,12 @@ export function HomeIcon(props: IconProps) {
 
 export function ActivityIcon(props: IconProps) {
   return <ReceiptText aria-hidden="true" {...props} />;
+}
+
+export function CameraIcon(props: IconProps) {
+  return <Camera aria-hidden="true" {...props} />;
+}
+
+export function ScanIcon(props: IconProps) {
+  return <ScanLine aria-hidden="true" {...props} />;
 }
