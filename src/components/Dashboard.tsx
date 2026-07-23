@@ -8,6 +8,7 @@ import {
 import { createPortal } from 'react-dom';
 import type {
   CreateWalletResult,
+  Entry,
   PrepareSendResult,
   SendRequest,
 } from '@lightninglabs/wavelength-react';
@@ -35,16 +36,34 @@ import { Dialog } from './Dialog';
 import {
   ArrowDownIcon,
   ArrowUpIcon,
+  ActivityIcon,
   CheckIcon,
   ChevronRightIcon,
   CopyIcon,
+  HomeIcon,
   LinkIcon,
 } from './Icons';
 import { LightningInvoiceResult } from './LightningInvoiceResult';
 import { SignetFaucetGuide } from './SignetFaucetGuide';
+import {
+  Alert,
+  AlertAction,
+  AlertDescription,
+  AlertTitle,
+} from './ui/alert';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Input } from './ui/input';
+import { Progress } from './ui/progress';
+import { Separator } from './ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Textarea } from './ui/textarea';
 
 type WalletAction = 'receive' | 'deposit' | 'send';
 type Action = WalletAction | null;
+const DASHBOARD_VIEWS = ['home', 'activity'] as const;
+type DashboardView = (typeof DASHBOARD_VIEWS)[number];
 type ActivityDialogState =
   | { readonly type: 'history' }
   | { readonly type: 'detail'; readonly entryId: string }
@@ -56,15 +75,37 @@ type ActionDialogProps = {
 };
 type PaymentToastProps = { readonly notice: PaymentNotice; readonly onDismiss: () => void };
 type ReceiveFormProps = { readonly onInvoiceCreated: (entryId: string) => void };
+type MovementsViewProps = {
+  readonly entries: readonly Entry[];
+  readonly onDeposit: () => void;
+  readonly onOpenDetail: (entryId: string) => void;
+  readonly onOpenHistory: () => void;
+};
+type BalanceScale = 'compact' | 'default' | 'medium';
 
 const ACTION_DIALOG_LABELS = {
   deposit: 'Fondear wallet',
   receive: 'Recibir por Lightning',
   send: 'Enviar pago',
 } as const satisfies Record<WalletAction, string>;
+const RECEIVE_PROGRESS_PERCENT = {
+  route: 28,
+  slow: 88,
+  swap: 68,
+} as const satisfies Record<ReturnType<typeof receiveProgressFor>['stage'], number>;
 
 async function copyText(value: string): Promise<void> {
   await navigator.clipboard.writeText(value);
+}
+
+function balanceScaleFor(formattedBalance: string): BalanceScale {
+  if (formattedBalance.length >= 16) return 'compact';
+  if (formattedBalance.length >= 11) return 'medium';
+  return 'default';
+}
+
+function isDashboardView(value: string): value is DashboardView {
+  return DASHBOARD_VIEWS.some((view) => view === value);
 }
 
 export function Dashboard() {
@@ -72,6 +113,7 @@ export function Dashboard() {
   const info = useWalletInfo();
   const activity = useWalletActivity();
   const [action, setAction] = useState<Action>(null);
+  const [activeView, setActiveView] = useState<DashboardView>('home');
   const [activityDialog, setActivityDialog] = useState<ActivityDialogState>(null);
   const [notice, setNotice] = useState<PaymentNotice | null>(null);
   const [activeReceiveEntryId, setActiveReceiveEntryId] = useState<string | null>(null);
@@ -118,36 +160,142 @@ export function Dashboard() {
   const pendingInSat = balance?.pendingInSat ?? 0;
   const pendingOutSat = balance?.pendingOutSat ?? 0;
   const hasPendingBalance = pendingInSat > 0 || pendingOutSat > 0;
+  const confirmedSat = balance?.confirmedSat ?? 0;
+  const blockHeight = info?.blockHeight ?? 0;
+  const formattedConfirmedSat = formatSats(confirmedSat);
+  const balanceScale = balanceScaleFor(formattedConfirmedSat);
+  const changeView = (value: string): void => {
+    if (isDashboardView(value)) setActiveView(value);
+  };
 
   return (
     <main className="dashboard">
-      <section className="balance-panel" aria-labelledby="balance-heading">
-        <div className="balance-top">
-          <div>
-            <span className="balance-label" id="balance-heading">Saldo disponible</span>
-            <p className="balance-number"><strong>{formatSats(balance?.confirmedSat ?? 0)}</strong><span>sats</span></p>
-          </div>
-          <div className="connection" aria-label={`Conectado, bloque ${info?.blockHeight ?? 0}`}>
-            <span aria-hidden="true" />
-            <strong>En línea</strong>
-            <small>#{formatSats(info?.blockHeight ?? 0)}</small>
-          </div>
-        </div>
+      <Tabs className="dashboard-tabs" value={activeView} onValueChange={changeView}>
+        <Card className="dashboard-surface">
+          <TabsContent className="dashboard-view dashboard-home-view" value="home">
+            <section className="balance-panel" aria-labelledby="balance-heading">
+              <header className="balance-header">
+                <span className="balance-label" id="balance-heading">Saldo disponible</span>
+                <Badge
+                  className="connection"
+                  variant="outline"
+                  aria-label={`Conectado, bloque ${blockHeight}`}
+                >
+                  <span className="connection-dot" aria-hidden="true" />
+                  En línea
+                </Badge>
+              </header>
 
-        <div className="balance-meta" aria-live="polite">
-          {!hasPendingBalance && <span className="balance-ready">Saldo listo para usar</span>}
-          {pendingInSat > 0 && <span><strong>+{formatSats(pendingInSat)}</strong> entrando</span>}
-          {pendingOutSat > 0 && <span><strong>−{formatSats(pendingOutSat)}</strong> saliendo</span>}
-        </div>
+              <div className="balance-total">
+                <p className="balance-number" data-balance-scale={balanceScale}>
+                  <strong>{formattedConfirmedSat}</strong>
+                  <span>sats</span>
+                </p>
+                <div className="balance-meta" aria-live="polite">
+                  {!hasPendingBalance && <span className="balance-ready">Saldo listo para usar</span>}
+                  {pendingInSat > 0 && (
+                    <span><strong>+{formatSats(pendingInSat)}</strong> entrando</span>
+                  )}
+                  {pendingOutSat > 0 && (
+                    <span><strong>−{formatSats(pendingOutSat)}</strong> saliendo</span>
+                  )}
+                </div>
+              </div>
 
-        <div className="balance-actions" role="group" aria-label="Acciones de la wallet">
-          <button type="button" aria-pressed={action === 'receive'} onClick={() => openAction('receive')}><span><ArrowDownIcon /></span><strong>Recibir</strong></button>
-          <button type="button" aria-pressed={action === 'send'} onClick={() => openAction('send')}><span><ArrowUpIcon /></span><strong>Enviar</strong></button>
-          <button type="button" aria-pressed={action === 'deposit'} onClick={() => openAction('deposit')}><span><LinkIcon /></span><strong>On-chain</strong></button>
-        </div>
-      </section>
+              <div className="balance-actions" role="group" aria-label="Acciones de la wallet">
+                <Button
+                  className="quick-action"
+                  type="button"
+                  variant="ghost"
+                  aria-pressed={action === 'send'}
+                  onClick={() => openAction('send')}
+                >
+                  <span className="quick-action-icon"><ArrowUpIcon /></span>
+                  <strong>Enviar</strong>
+                </Button>
+                <Button
+                  className="quick-action"
+                  type="button"
+                  variant="ghost"
+                  aria-pressed={action === 'receive'}
+                  onClick={() => openAction('receive')}
+                >
+                  <span className="quick-action-icon"><ArrowDownIcon /></span>
+                  <strong>Recibir</strong>
+                </Button>
+                <Button
+                  className="quick-action"
+                  type="button"
+                  variant="ghost"
+                  aria-pressed={action === 'deposit'}
+                  onClick={() => openAction('deposit')}
+                >
+                  <span className="quick-action-icon"><LinkIcon /></span>
+                  <strong>Fondear</strong>
+                </Button>
+              </div>
 
-      <RecoveryBanner />
+              <Separator className="dashboard-separator" />
+
+              <dl className="balance-breakdown" aria-label="Desglose del saldo">
+                <div className="balance-metric">
+                  <dt>Disponible</dt>
+                  <dd>{formattedConfirmedSat} <small>sats</small></dd>
+                </div>
+                <div className="balance-metric">
+                  <dt>Entrando</dt>
+                  <dd>+{formatSats(pendingInSat)} <small>sats</small></dd>
+                </div>
+                <div className="balance-metric">
+                  <dt>Saliendo</dt>
+                  <dd>−{formatSats(pendingOutSat)} <small>sats</small></dd>
+                </div>
+                <div className="balance-metric network-metric">
+                  <dt>Red · bloque</dt>
+                  <dd>Signet <small>#{formatSats(blockHeight)}</small></dd>
+                </div>
+              </dl>
+            </section>
+
+            <RecoveryBanner />
+          </TabsContent>
+
+          <TabsContent className="dashboard-view dashboard-activity-view" value="activity">
+            <MovementsView
+              entries={activity}
+              onDeposit={() => openAction('deposit')}
+              onOpenDetail={(entryId) => setActivityDialog({ type: 'detail', entryId })}
+              onOpenHistory={() => setActivityDialog({ type: 'history' })}
+            />
+          </TabsContent>
+
+          <TabsList className="dashboard-nav" aria-label="Secciones de la wallet">
+            <TabsTrigger
+              className="dashboard-nav-item"
+              value="home"
+              onClick={() => setActiveView('home')}
+            >
+              <HomeIcon />
+              <span>Inicio</span>
+            </TabsTrigger>
+            <TabsTrigger
+              className="dashboard-nav-item"
+              value="activity"
+              aria-label={`Movimientos, ${activity.length}`}
+              onClick={() => setActiveView('activity')}
+            >
+              <ActivityIcon />
+              <span>Movimientos</span>
+              {activity.length > 0 && (
+                <span className="dashboard-nav-count" aria-hidden="true">
+                  {activity.length}
+                </span>
+              )}
+            </TabsTrigger>
+          </TabsList>
+        </Card>
+      </Tabs>
+
       {action && (
         <ActionDialog
           action={action}
@@ -163,34 +311,68 @@ export function Dashboard() {
           onClose={() => setActivityDialog(null)}
         />
       )}
+    </main>
+  );
+}
 
-      <section className="activity-section" aria-labelledby="activity-heading">
-        <div className="section-title">
-          <div><span className="step-label">Movimientos</span><h2 id="activity-heading">Actividad reciente</h2></div>
-          {activity.length > 0 && (
-            <button type="button" onClick={() => setActivityDialog({ type: 'history' })}>
-              Ver todos <ChevronRightIcon />
-            </button>
-          )}
+function MovementsView({
+  entries,
+  onDeposit,
+  onOpenDetail,
+  onOpenHistory,
+}: MovementsViewProps) {
+  const visibleEntries = recentActivity(entries);
+  const countLabel = entries.length === 1 ? '1 movimiento' : `${entries.length} movimientos`;
+
+  return (
+    <section className="activity-section activity-page" aria-labelledby="activity-heading">
+      <div className="section-title">
+        <div>
+          <span className="step-label">Movimientos</span>
+          <h2 id="activity-heading">Actividad reciente</h2>
         </div>
-        {activity.length === 0 ? (
+        <Badge className="activity-count" variant="outline" aria-label={countLabel}>
+          {entries.length}
+        </Badge>
+      </div>
+
+      <div className="activity-page-body">
+        {entries.length === 0 ? (
           <div className="empty-activity">
-            <span><ArrowDownIcon /></span>
+            <span className="empty-activity-icon"><ArrowDownIcon /></span>
             <h3>Probá Rayito con sats de prueba</h3>
-            <p>Signet es una red de prueba: sus sats no tienen valor real. Generá una dirección y pedilos gratis en un faucet.</p>
-            <button type="button" onClick={() => openAction('deposit')}>
+            <p>
+              Signet es una red de prueba: sus sats no tienen valor real.
+              Generá una dirección y pedilos gratis en un faucet.
+            </p>
+            <Button
+              className="empty-activity-action"
+              type="button"
+              variant="ghost"
+              onClick={onDeposit}
+            >
               Conseguir sats de prueba
               <ChevronRightIcon />
-            </button>
+            </Button>
           </div>
         ) : (
-          <ActivityRows
-            entries={recentActivity(activity)}
-            onSelect={(entryId) => setActivityDialog({ type: 'detail', entryId })}
-          />
+          <ActivityRows entries={visibleEntries} onSelect={onOpenDetail} />
         )}
-      </section>
-    </main>
+      </div>
+
+      {entries.length > 0 && (
+        <div className="activity-page-footer">
+          <Button
+            className="activity-see-all"
+            type="button"
+            variant="ghost"
+            onClick={onOpenHistory}
+          >
+            Ver historial completo <ChevronRightIcon />
+          </Button>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -226,7 +408,16 @@ function PaymentToast({ notice, onDismiss }: PaymentToastProps) {
     <aside className="payment-toast" role="status" aria-live="polite">
       <span className="payment-toast-icon"><CheckIcon /></span>
       <div><strong>{title}</strong><p>{detail}</p></div>
-      <button type="button" onClick={onDismiss} aria-label="Cerrar alerta">×</button>
+      <Button
+        className="payment-toast-close"
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={onDismiss}
+        aria-label="Cerrar alerta"
+      >
+        ×
+      </Button>
     </aside>,
     document.body,
   );
@@ -274,7 +465,7 @@ function ReceiveForm({ onInvoiceCreated }: ReceiveFormProps) {
         <form onSubmit={(event) => void submit(event)}>
           <label className="field">
             <span>Monto en sats</span>
-            <input
+            <Input
               inputMode="numeric"
               maxLength={16}
               value={amount}
@@ -285,29 +476,40 @@ function ReceiveForm({ onInvoiceCreated }: ReceiveFormProps) {
           </label>
           <label className="field">
             <span>Concepto (opcional)</span>
-            <input
+            <Input
               value={memo}
               onChange={(event) => setMemo(event.target.value)}
               placeholder="Café, cena, regalo…"
               disabled={receivePending}
             />
           </label>
-          {amount && !amountResult.valid && <p className="form-error" role="alert">{amountResult.error}</p>}
-          {receiveError && <p className="form-error">{receiveError.message}</p>}
-          <button className="primary-button" disabled={!amountResult.valid || receivePending}>
+          {amount && !amountResult.valid && <FormError message={amountResult.error} />}
+          {receiveError && <FormError message={receiveError.message} />}
+          <Button
+            className="primary-button"
+            type="submit"
+            disabled={!amountResult.valid || receivePending}
+          >
             {receivePending ? `Generando · ${elapsedSeconds}s` : 'Crear factura'}
             <ArrowDownIcon />
-          </button>
+          </Button>
           {receivePending && (
-            <div
+            <Alert
               className={`receive-progress ${progress.stage}`}
               role="status"
               aria-live="polite"
             >
-              <span className="receive-progress-dot" />
-              <div><strong>{progress.title}</strong><p>{progress.detail}</p></div>
-              <time>{elapsedSeconds}s</time>
-            </div>
+              <div className="receive-progress-copy">
+                <AlertTitle>{progress.title}</AlertTitle>
+                <AlertDescription>{progress.detail}</AlertDescription>
+                <time>{elapsedSeconds}s</time>
+              </div>
+              <Progress
+                className="receive-progress-bar"
+                value={RECEIVE_PROGRESS_PERCENT[progress.stage]}
+                aria-label="Progreso de generación de la factura"
+              />
+            </Alert>
           )}
         </form>
       )}
@@ -334,15 +536,16 @@ function DepositForm() {
       ) : (
         <>
           <p className="deposit-hint">Generá una dirección para pedir sats de prueba. Cuando se confirme el depósito, el saldo entra a Ark y queda listo para usar.</p>
-          {depositError && <p className="form-error">{depositError.message}</p>}
-          <button
+          {depositError && <FormError message={depositError.message} />}
+          <Button
             className="primary-button"
+            type="button"
             onClick={() => void requestDeposit()}
             disabled={depositPending}
           >
             {depositPending ? 'Generando…' : 'Generar dirección Signet'}
             <LinkIcon />
-          </button>
+          </Button>
         </>
       )}
     </div>
@@ -374,15 +577,136 @@ function SendForm() {
     try { await sendPrepared(quote); } catch { /* Error is rendered from sendError. */ }
   };
 
-  if (sendData) return <div><span className="step-label">Listo</span><h2>Pago enviado</h2><p>Se enviaron {formatSats(sendData.actualAmountSat)} sats. Podés seguir el estado en la actividad.</p></div>;
+  if (sendData) {
+    return (
+      <div className="send-success">
+        <span className="step-label">Listo</span>
+        <h2>Pago enviado</h2>
+        <Alert role="status" aria-live="polite">
+          <AlertTitle>Envío confirmado</AlertTitle>
+          <AlertDescription>
+            Se enviaron {formatSats(sendData.actualAmountSat)} sats.
+            Podés seguir el estado en la actividad.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   const invalidAmount = !isLightning && !amountResult.valid;
-  return <div><span className="step-label">Enviar</span><h2>{quote ? 'Revisá el pago' : '¿A dónde enviamos?'}</h2>{quote ? <div className="quote"><dl><div><dt>Monto</dt><dd>{formatSats(quote.amountSat)} sats</dd></div><div><dt>Comisión estimada</dt><dd>{quote.feeKnown ? `${formatSats(quote.expectedFeeSat)} sats` : 'A confirmar'}</dd></div><div><dt>Vía</dt><dd>{quote.rail}</dd></div></dl>{quote.warning && <p className="warning-strip">{quote.warning}</p>}{sendError && <p className="form-error">{sendError.message}</p>}<button className="primary-button" onClick={() => void confirmSend()} disabled={sendPending}>{sendPending ? 'Enviando…' : 'Confirmar envío'} <ArrowUpIcon /></button><button className="text-button" onClick={() => setQuote(null)}>Editar</button></div> : <form onSubmit={(event) => void preview(event)}><label className="field"><span>Factura Lightning o dirección</span><textarea rows={3} value={destination} onChange={(event) => setDestination(event.target.value)} placeholder="lnbc… o tb1…" /></label>{!isLightning && <label className="field"><span>Monto en sats</span><input inputMode="numeric" maxLength={16} value={amount} onChange={(event) => setAmount(event.target.value.replace(/\D/g, ''))} /></label>}{amount && invalidAmount && <p className="form-error" role="alert">{amountResult.error}</p>}{prepareError && <p className="form-error">{prepareError.message}</p>}<button className="primary-button" disabled={!destination.trim() || invalidAmount || preparePending}>{preparePending ? 'Cotizando…' : 'Revisar pago'} <ArrowUpIcon /></button></form>}</div>;
+  return (
+    <div className="send-view">
+      <span className="step-label">Enviar</span>
+      <h2>{quote ? 'Revisá el pago' : '¿A dónde enviamos?'}</h2>
+      {quote ? (
+        <div className="quote">
+          <dl className="quote-summary">
+            <div>
+              <dt>Monto</dt>
+              <dd>{formatSats(quote.amountSat)} sats</dd>
+            </div>
+            <div>
+              <dt>Comisión estimada</dt>
+              <dd>
+                {quote.feeKnown
+                  ? `${formatSats(quote.expectedFeeSat)} sats`
+                  : 'A confirmar'}
+              </dd>
+            </div>
+            <div>
+              <dt>Vía</dt>
+              <dd>{quote.rail}</dd>
+            </div>
+          </dl>
+          {quote.warning && (
+            <Alert className="warning-strip">
+              <AlertDescription>{quote.warning}</AlertDescription>
+            </Alert>
+          )}
+          {sendError && <FormError message={sendError.message} />}
+          <div className="form-actions">
+            <Button
+              className="primary-button"
+              type="button"
+              onClick={() => void confirmSend()}
+              disabled={sendPending}
+            >
+              {sendPending ? 'Enviando…' : 'Confirmar envío'}
+              <ArrowUpIcon />
+            </Button>
+            <Button
+              className="text-button"
+              type="button"
+              variant="ghost"
+              onClick={() => setQuote(null)}
+            >
+              Editar
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <form onSubmit={(event) => void preview(event)}>
+          <label className="field">
+            <span>Factura Lightning o dirección</span>
+            <Textarea
+              rows={3}
+              value={destination}
+              onChange={(event) => setDestination(event.target.value)}
+              placeholder="lnbc… o tb1…"
+            />
+          </label>
+          {!isLightning && (
+            <label className="field">
+              <span>Monto en sats</span>
+              <Input
+                inputMode="numeric"
+                maxLength={16}
+                value={amount}
+                onChange={(event) => setAmount(event.target.value.replace(/\D/g, ''))}
+              />
+            </label>
+          )}
+          {amount && invalidAmount && <FormError message={amountResult.error} />}
+          {prepareError && <FormError message={prepareError.message} />}
+          <Button
+            className="primary-button"
+            type="submit"
+            disabled={!destination.trim() || invalidAmount || preparePending}
+          >
+            {preparePending ? 'Cotizando…' : 'Revisar pago'}
+            <ArrowUpIcon />
+          </Button>
+        </form>
+      )}
+    </div>
+  );
 }
 
 function ResultBox({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
-  const copy = async () => { await copyText(value); setCopied(true); window.setTimeout(() => setCopied(false), 1500); };
-  return <div className="result-box"><span>{label}</span><code>{value}</code><button onClick={() => void copy()}><CopyIcon /> {copied ? 'Copiado' : 'Copiar'}</button></div>;
+  const copy = async () => {
+    await copyText(value);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1_500);
+  };
+
+  return (
+    <div className="result-box">
+      <span>{label}</span>
+      <code>{value}</code>
+      <Button type="button" variant="outline" onClick={() => void copy()}>
+        <CopyIcon /> {copied ? 'Copiado' : 'Copiar'}
+      </Button>
+    </div>
+  );
+}
+
+function FormError({ message }: { readonly message: string }) {
+  return (
+    <Alert className="form-error" variant="destructive">
+      <AlertDescription>{message}</AlertDescription>
+    </Alert>
+  );
 }
 
 function RecoveryBanner() {
@@ -416,23 +740,38 @@ function RecoveryBanner() {
   if (recovery.status === 'idle') return null;
   if (recovery.status === 'restoring') {
     return (
-      <p className="recovery-banner" role="status" aria-live="polite">
-        Estamos reconstruyendo tu saldo e historial. No cierres ni recargues esta pestaña.
-      </p>
+      <Alert className="recovery-banner" role="status" aria-live="polite">
+        <AlertTitle>Recuperando la wallet</AlertTitle>
+        <AlertDescription>
+          Estamos reconstruyendo tu saldo e historial. No cierres ni recargues esta pestaña.
+        </AlertDescription>
+      </Alert>
     );
   }
   if (recovery.status === 'done') {
     return (
-      <p className="recovery-banner" role="status" aria-live="polite">
-        {recoveryResultMessage(recovery.result)} <button onClick={acknowledge}>Cerrar</button>
-      </p>
+      <Alert className="recovery-banner" role="status" aria-live="polite">
+        <AlertTitle>Recuperación terminada</AlertTitle>
+        <AlertDescription>{recoveryResultMessage(recovery.result)}</AlertDescription>
+        <AlertAction>
+          <Button type="button" variant="ghost" size="sm" onClick={acknowledge}>
+            Cerrar
+          </Button>
+        </AlertAction>
+      </Alert>
     );
   }
   return (
-    <p className="recovery-banner error" role="alert">
-      No pudimos completar la recuperación: {recovery.error.message}{' '}
-      <button onClick={acknowledge}>Cerrar</button>
-    </p>
+    <Alert className="recovery-banner error" variant="destructive">
+      <AlertDescription>
+        No pudimos completar la recuperación: {recovery.error.message}
+      </AlertDescription>
+      <AlertAction>
+        <Button type="button" variant="ghost" size="sm" onClick={acknowledge}>
+          Cerrar
+        </Button>
+      </AlertAction>
+    </Alert>
   );
 }
 

@@ -236,6 +236,26 @@ describe('Dashboard receive flow', () => {
     expect(screen.getByRole('button', { name: 'Revisar pago' })).toBeDisabled();
   });
 
+  it('keeps the balance and movements in separate viewport views', () => {
+    wallet.activity = [historyEntry(1, 'receive', 'lightning')];
+    render(<Dashboard />);
+
+    const homeTab = screen.getByRole('tab', { name: 'Inicio' });
+    const movementsTab = screen.getByRole('tab', { name: /^Movimientos/ });
+    expect(homeTab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('region', { name: 'Saldo disponible' })).toBeVisible();
+    expect(screen.queryByRole('region', { name: 'Actividad reciente' })).not.toBeInTheDocument();
+
+    fireEvent.click(movementsTab);
+
+    expect(movementsTab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('region', { name: 'Actividad reciente' })).toBeVisible();
+    expect(screen.queryByRole('region', { name: 'Saldo disponible' })).not.toBeInTheDocument();
+
+    fireEvent.click(homeTab);
+    expect(screen.getByRole('region', { name: 'Saldo disponible' })).toBeVisible();
+  });
+
   it('guides a first-time user from an empty wallet to the Signet faucet', async () => {
     const depositResult: DepositResult = {
       address: 'tb1qrayitosignetexample',
@@ -244,6 +264,7 @@ describe('Dashboard receive flow', () => {
     deposit.mockResolvedValue(depositResult);
     const view = render(<Dashboard />);
 
+    fireEvent.click(screen.getByRole('tab', { name: /^Movimientos/ }));
     expect(screen.getByText('Probá Rayito con sats de prueba')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Conseguir sats de prueba' }));
 
@@ -312,6 +333,7 @@ describe('Dashboard receive flow', () => {
 
     render(<Dashboard />);
 
+    fireEvent.click(screen.getByRole('tab', { name: /^Movimientos/ }));
     const activityRegion = screen.getByRole('region', { name: 'Actividad reciente' });
     expect(within(activityRegion).getAllByRole('button', { name: /^Ver detalles:/ }))
       .toHaveLength(5);
@@ -324,7 +346,9 @@ describe('Dashboard receive flow', () => {
     fireEvent.click(within(directDetail).getByRole('button', { name: 'Cerrar' }));
     listActivity.mockClear();
 
-    fireEvent.click(within(activityRegion).getByRole('button', { name: 'Ver todos' }));
+    fireEvent.click(within(activityRegion).getByRole('button', {
+      name: 'Ver historial completo',
+    }));
     const historyDialog = await screen.findByRole('dialog', { name: 'Historial de movimientos' });
     await waitFor(() => expect(listActivity).toHaveBeenCalledWith({
       cursor: '',

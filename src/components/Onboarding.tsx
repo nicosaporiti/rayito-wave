@@ -6,6 +6,12 @@ import {
 } from '@lightninglabs/wavelength-react';
 import { normalizeMnemonic, validatePassword } from '../lib/validation';
 import { ArrowUpIcon, BoltIcon } from './Icons';
+import { Alert, AlertDescription } from './ui/alert';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Input } from './ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Textarea } from './ui/textarea';
 
 type OnboardingProps = {
   onCreated: (mnemonic: readonly string[]) => void;
@@ -23,14 +29,16 @@ export function Onboarding({ onCreated }: OnboardingProps) {
   const { create, createPending, createError, resetCreate } = useWalletCreate();
   const { restore, restorePending, restoreError, resetRestore } = useWalletRestore();
 
-  const changeMode = (nextMode: SetupMode) => {
+  const changeMode = (nextMode: string): void => {
+    if (nextMode !== 'create' && nextMode !== 'restore') return;
+
     setMode(nextMode);
     setValidation(null);
     resetCreate();
     resetRestore();
   };
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     const issue = validatePassword(password);
     if (issue) return setValidation(issue);
@@ -59,12 +67,13 @@ export function Onboarding({ onCreated }: OnboardingProps) {
 
   const pending = createPending || restorePending;
   const sdkError = createError ?? restoreError;
+  const formError = validation ?? sdkError?.message;
 
   return (
-    <main className="onboarding">
-      <section className="onboarding-story">
+    <main className="onboarding onboarding-screen wallet-screen">
+      <section className="onboarding-story onboarding-intro" aria-labelledby="onboarding-title">
         <p className="eyebrow">Bitcoin sencillo. Control real.</p>
-        <h1>Tu plata.<br /><em>En tus manos.</em></h1>
+        <h1 id="onboarding-title">Tu plata.<br /><em>En tus manos.</em></h1>
         <p className="story-copy">Una wallet para usar Bitcoin y Lightning sin entregar tus llaves. Rayito corre en este dispositivo; Wavelength conecta los rieles por debajo.</p>
         <div className="custody-note">
           <span className="custody-icon"><BoltIcon /></span>
@@ -72,41 +81,92 @@ export function Onboarding({ onCreated }: OnboardingProps) {
         </div>
       </section>
 
-      <section className="setup-card" aria-labelledby="setup-title">
-        <div className="mode-tabs" role="tablist" aria-label="Configurar wallet">
-          <button role="tab" aria-selected={mode === 'create'} onClick={() => changeMode('create')}>Nueva wallet</button>
-          <button role="tab" aria-selected={mode === 'restore'} onClick={() => changeMode('restore')}>Recuperar</button>
-        </div>
-        <div className="setup-body">
-          <span className="step-label">{mode === 'create' ? '01 — Empezar' : '01 — Volver'}</span>
-          <h2 id="setup-title">{mode === 'create' ? 'Abrí tu wallet' : 'Recuperá tu wallet'}</h2>
-          <p>{mode === 'create' ? 'Elegí una contraseña local. Después vas a guardar tus 24 palabras.' : 'Ingresá tus 24 palabras y elegí una contraseña nueva para este dispositivo.'}</p>
+      <Card
+        className="setup-card onboarding-form-card"
+        role="region"
+        aria-labelledby="setup-title"
+      >
+        <Tabs className="setup-tabs" value={mode} onValueChange={changeMode}>
+          <TabsList className="mode-tabs" aria-label="Configurar wallet">
+            <TabsTrigger
+              value="create"
+              onClick={() => {
+                if (mode !== 'create') changeMode('create');
+              }}
+            >
+              Nueva wallet
+            </TabsTrigger>
+            <TabsTrigger
+              value="restore"
+              onClick={() => {
+                if (mode !== 'restore') changeMode('restore');
+              }}
+            >
+              Recuperar
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent className="setup-body" value={mode}>
+            <span className="step-label">{mode === 'create' ? '01 — Empezar' : '01 — Volver'}</span>
+            <h2 id="setup-title">{mode === 'create' ? 'Abrí tu wallet' : 'Recuperá tu wallet'}</h2>
+            <p>{mode === 'create' ? 'Elegí una contraseña local. Después vas a guardar tus 24 palabras.' : 'Ingresá tus 24 palabras y elegí una contraseña nueva para este dispositivo.'}</p>
 
-          <form onSubmit={(event) => void submit(event)} noValidate>
-            {mode === 'restore' && (
+            <form onSubmit={(event) => void submit(event)} noValidate>
+              {mode === 'restore' && (
+                <label className="field">
+                  <span>Frase de recuperación</span>
+                  <Textarea
+                    value={mnemonic}
+                    onChange={(event) => setMnemonic(event.target.value)}
+                    rows={4}
+                    autoComplete="off"
+                    spellCheck={false}
+                    placeholder="palabra 1  palabra 2  palabra 3…"
+                    aria-invalid={Boolean(formError)}
+                  />
+                  <small>{mnemonic.trim() ? `${mnemonic.trim().split(/\s+/).length} / 24 palabras` : 'Separá cada palabra con un espacio.'}</small>
+                </label>
+              )}
               <label className="field">
-                <span>Frase de recuperación</span>
-                <textarea value={mnemonic} onChange={(event) => setMnemonic(event.target.value)} rows={4} autoComplete="off" spellCheck={false} placeholder="palabra 1  palabra 2  palabra 3…" />
-                <small>{mnemonic.trim() ? `${mnemonic.trim().split(/\s+/).length} / 24 palabras` : 'Separá cada palabra con un espacio.'}</small>
+                <span>Contraseña</span>
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  autoComplete="new-password"
+                  placeholder="Mínimo 10 caracteres"
+                  aria-invalid={Boolean(formError)}
+                />
               </label>
-            )}
-            <label className="field">
-              <span>Contraseña</span>
-              <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" placeholder="Mínimo 10 caracteres" />
-            </label>
-            <label className="field">
-              <span>Repetir contraseña</span>
-              <input type="password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="new-password" placeholder="Volvé a escribirla" />
-            </label>
-            {(validation || sdkError) && <p className="form-error" role="alert">{validation ?? sdkError?.message}</p>}
-            <button className="primary-button" type="submit" disabled={pending}>
-              {pending ? 'Preparando…' : mode === 'create' ? 'Crear mi wallet' : 'Recuperar wallet'}
-              {!pending && <ArrowUpIcon />}
-            </button>
-          </form>
-          <p className="local-note"><span>●</span> Todo queda cifrado en este dispositivo</p>
-        </div>
-      </section>
+              <label className="field">
+                <span>Repetir contraseña</span>
+                <Input
+                  type="password"
+                  value={confirmation}
+                  onChange={(event) => setConfirmation(event.target.value)}
+                  autoComplete="new-password"
+                  placeholder="Volvé a escribirla"
+                  aria-invalid={Boolean(formError)}
+                />
+              </label>
+              {formError && (
+                <Alert className="form-error setup-error" variant="destructive">
+                  <AlertDescription>{formError}</AlertDescription>
+                </Alert>
+              )}
+              <Button
+                className="primary-button setup-submit"
+                type="submit"
+                size="lg"
+                disabled={pending}
+              >
+                {pending ? 'Preparando…' : mode === 'create' ? 'Crear mi wallet' : 'Recuperar wallet'}
+                {!pending && <ArrowUpIcon />}
+              </Button>
+            </form>
+            <p className="local-note"><span aria-hidden="true">●</span> Todo queda cifrado en este dispositivo</p>
+          </TabsContent>
+        </Tabs>
+      </Card>
     </main>
   );
 }
@@ -115,7 +175,7 @@ export function Unlock() {
   const [password, setPassword] = useState('');
   const { unlock, unlockPending, unlockError } = useWalletUnlock();
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     try {
       await unlock({ password });
@@ -125,18 +185,43 @@ export function Unlock() {
   };
 
   return (
-    <main className="center-stage">
-      <section className="unlock-card">
-        <span className="round-bolt"><BoltIcon /></span>
+    <main className="center-stage wallet-screen">
+      <Card
+        className="unlock-card state-card unlock-wallet-card"
+        role="region"
+        aria-labelledby="unlock-title"
+      >
+        <span className="round-bolt state-card__icon"><BoltIcon /></span>
         <p className="eyebrow">Qué bueno verte de nuevo</p>
-        <h1>Desbloqueá tu wallet</h1>
+        <h1 id="unlock-title">Desbloqueá tu wallet</h1>
         <p>Tu wallet cifrada vive en este navegador.</p>
         <form onSubmit={(event) => void submit(event)}>
-          <label className="field"><span>Contraseña</span><input autoFocus type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" /></label>
-          {unlockError && <p className="form-error" role="alert">{unlockError.message}</p>}
-          <button className="primary-button" disabled={!password || unlockPending}>{unlockPending ? 'Abriendo…' : 'Abrir wallet'} <ArrowUpIcon /></button>
+          <label className="field">
+            <span>Contraseña</span>
+            <Input
+              autoFocus
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="current-password"
+              aria-invalid={Boolean(unlockError)}
+            />
+          </label>
+          {unlockError && (
+            <Alert className="form-error unlock-error" variant="destructive">
+              <AlertDescription>{unlockError.message}</AlertDescription>
+            </Alert>
+          )}
+          <Button
+            className="primary-button unlock-submit"
+            type="submit"
+            size="lg"
+            disabled={!password || unlockPending}
+          >
+            {unlockPending ? 'Abriendo…' : 'Abrir wallet'} <ArrowUpIcon />
+          </Button>
         </form>
-      </section>
+      </Card>
     </main>
   );
 }

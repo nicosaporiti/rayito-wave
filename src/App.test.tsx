@@ -38,7 +38,9 @@ vi.mock('./components/Brand', () => ({
   Brand: () => <span>Rayito</span>,
   NetworkBadge: () => <span>Signet</span>,
 }));
-vi.mock('./components/Dashboard', () => ({ Dashboard: () => <main>Dashboard</main> }));
+vi.mock('./components/Dashboard', () => ({
+  Dashboard: () => <main className="dashboard-view">Dashboard</main>,
+}));
 vi.mock('./components/Onboarding', () => ({
   Onboarding: () => <main>Onboarding</main>,
   Unlock: () => <main>Unlock</main>,
@@ -174,6 +176,39 @@ describe('App wallet locking', () => {
 
     expect(wallet.stop).toHaveBeenCalledOnce();
     expect(wallet.start).toHaveBeenCalledOnce();
+  });
+
+  it('renews the idle deadline when the dashboard scrolls internally', async () => {
+    vi.useFakeTimers();
+    render(<App />);
+
+    await act(async () => {
+      vi.advanceTimersByTime(4 * 60 * 1_000);
+    });
+    fireEvent.scroll(screen.getByText('Dashboard'));
+    await act(async () => {
+      vi.advanceTimersByTime(4 * 60 * 1_000);
+      await Promise.resolve();
+    });
+
+    expect(wallet.stop).not.toHaveBeenCalled();
+    expect(wallet.start).not.toHaveBeenCalled();
+
+    await act(async () => {
+      vi.advanceTimersByTime(60 * 1_000);
+      await Promise.resolve();
+    });
+
+    expect(wallet.stop).toHaveBeenCalledOnce();
+    expect(wallet.start).toHaveBeenCalledOnce();
+  });
+
+  it('uses the dashboard navigation instead of the informational footer when ready', () => {
+    render(<App />);
+
+    expect(document.querySelector('.wallet-frame--dashboard')).toBeInTheDocument();
+    expect(screen.queryByText(/Impulsado por/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Alpha/)).not.toBeInTheDocument();
   });
 
   it('prevents locking and warns before unloading during recovery', async () => {

@@ -1,5 +1,8 @@
 import type { ReactElement } from 'react';
 import { LinkIcon } from './Icons';
+import { Alert, AlertDescription } from './ui/alert';
+import { Button } from './ui/button';
+import { Separator } from './ui/separator';
 
 const SIGNET_FAUCET_URL = 'https://bitcoinsignetfaucet.com/';
 const SIGNET_MEMPOOL_ADDRESS_URL = 'https://mempool.space/signet/address/';
@@ -33,31 +36,36 @@ export function SignetFaucetGuide({ address }: SignetFaucetGuideProps): ReactEle
           <p><strong>Seguí el depósito</strong> en mempool Signet. Aparece cuando el faucet publica el lote y Rayito lo acredita después de la confirmación.</p>
         </li>
       </ol>
+      <Separator className="signet-guide-separator" />
       <div className="signet-guide-actions">
-        <a
-          className="signet-faucet-link"
-          href={SIGNET_FAUCET_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Abrir Bitcoin Signet Faucet en una pestaña nueva"
-        >
-          Abrir Bitcoin Signet Faucet
-          <LinkIcon />
-        </a>
-        <a
-          className="signet-mempool-link"
-          href={mempoolAddressUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Seguir esta dirección en mempool Signet en una pestaña nueva"
-        >
-          Seguir en mempool Signet
-          <LinkIcon />
-        </a>
+        <Button className="signet-faucet-link" asChild>
+          <a
+            href={SIGNET_FAUCET_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Abrir Bitcoin Signet Faucet en una pestaña nueva"
+          >
+            Abrir Bitcoin Signet Faucet
+            <LinkIcon />
+          </a>
+        </Button>
+        <Button className="signet-mempool-link" variant="outline" asChild>
+          <a
+            href={mempoolAddressUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Seguir esta dirección en mempool Signet en una pestaña nueva"
+          >
+            Seguir en mempool Signet
+            <LinkIcon />
+          </a>
+        </Button>
       </div>
-      <p className="signet-guide-note">
-        El faucet es un servicio externo y puede quedarse temporalmente sin fondos o limitar solicitudes.
-      </p>
+      <Alert className="signet-guide-note" role="note">
+        <AlertDescription>
+          El faucet es un servicio externo y puede quedarse temporalmente sin fondos o limitar solicitudes.
+        </AlertDescription>
+      </Alert>
     </section>
   );
 }

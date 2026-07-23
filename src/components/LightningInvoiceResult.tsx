@@ -3,6 +3,9 @@ import { QRCodeSVG } from 'qrcode.react';
 import { formatSats } from '../lib/format';
 import { lightningInvoiceQrValue } from '../lib/lightning';
 import { CopyIcon } from './Icons';
+import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { Button } from './ui/button';
+import { Separator } from './ui/separator';
 
 type LightningInvoiceResultProps = {
   readonly amountSat: number;
@@ -23,13 +26,11 @@ export function LightningInvoiceResult({ amountSat, invoice }: LightningInvoiceR
 
   return (
     <div className="invoice-result">
-      <div className="invoice-status" role="status" aria-live="polite">
+      <Alert className="invoice-status" role="status" aria-live="polite">
         <span className="invoice-status-dot" aria-hidden="true" />
-        <div>
-          <strong>Factura lista</strong>
-          <p>Esperando {formatSats(amountSat)} sats</p>
-        </div>
-      </div>
+        <AlertTitle>Factura lista</AlertTitle>
+        <AlertDescription>Esperando {formatSats(amountSat)} sats</AlertDescription>
+      </Alert>
       <figure className="invoice-qr">
         <QRCodeSVG
           value={lightningInvoiceQrValue(invoice)}
@@ -42,11 +43,12 @@ export function LightningInvoiceResult({ amountSat, invoice }: LightningInvoiceR
         />
         <figcaption>Escaneá con otra wallet Lightning</figcaption>
       </figure>
+      <Separator className="invoice-separator" />
       <div className="invoice-copy">
         <code title={invoice}>{invoice}</code>
-        <button type="button" onClick={() => void copy()}>
+        <Button type="button" variant="outline" onClick={() => void copy()}>
           <CopyIcon /> {copied ? 'Copiado' : 'Copiar'}
-        </button>
+        </Button>
       </div>
       <p className="invoice-hint">Se cerrará automáticamente al confirmar el pago.</p>
     </div>

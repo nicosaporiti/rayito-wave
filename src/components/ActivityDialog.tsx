@@ -32,6 +32,10 @@ import {
   ArrowUpIcon,
   ChevronRightIcon,
 } from './Icons';
+import { Alert, AlertDescription } from './ui/alert';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Separator } from './ui/separator';
 
 const ACTIVITY_PAGE_SIZE = 50;
 
@@ -69,8 +73,10 @@ export function ActivityRows({ entries, focusEntryId, onSelect }: ActivityRowsPr
 
         return (
           <li key={entry.id}>
-            <button
+            <Button
+              className="activity-row"
               type="button"
+              variant="ghost"
               autoFocus={entry.id === focusEntryId}
               onClick={() => onSelect(entry.id)}
               aria-label={`Ver detalles: ${entryKindLabel(entry.kind)}, ${direction}, ${formatSats(Math.abs(entry.amountSat))} sats, ${activityRailLabel(rail)}, ${entryStatusLabel(entry.status)}, ${formatDate(entry.createdAt)}`}
@@ -83,16 +89,19 @@ export function ActivityRows({ entries, focusEntryId, onSelect }: ActivityRowsPr
                 <small>
                   <time dateTime={entry.createdAt}>{formatDate(entry.createdAt)}</time>
                   <span>{activityRailLabel(rail)}</span>
-                  <span className={`activity-status ${entry.status}`}>
+                  <Badge
+                    className={`activity-status ${entry.status}`}
+                    variant="outline"
+                  >
                     {entryStatusLabel(entry.status)}
-                  </span>
+                  </Badge>
                 </small>
               </span>
               <span className={`activity-amount ${incoming ? 'positive' : ''}`}>
                 {incoming ? '+' : '−'}{formatSats(Math.abs(entry.amountSat))} <small>sats</small>
               </span>
               <span className="activity-chevron"><ChevronRightIcon /></span>
-            </button>
+            </Button>
           </li>
         );
       })}
@@ -212,14 +221,17 @@ export function ActivityDialog({ entries, initialEntryId, onClose }: ActivityDia
 
             <div className="activity-filters" role="group" aria-label="Filtrar movimientos">
               {ACTIVITY_FILTER_OPTIONS.map((option) => (
-                <button
+                <Button
                   key={option.value}
+                  className="activity-filter"
                   type="button"
+                  variant={filter === option.value ? 'secondary' : 'ghost'}
+                  size="sm"
                   aria-pressed={filter === option.value}
                   onClick={() => setFilter(option.value)}
                 >
                   {option.label}
-                </button>
+                </Button>
               ))}
             </div>
 
@@ -245,16 +257,22 @@ export function ActivityDialog({ entries, initialEntryId, onClose }: ActivityDia
           )}
 
           {requestState.status === 'initial-loading' && (
-            <p className="activity-history-message" role="status">Cargando el historial completo…</p>
+            <Alert className="activity-history-message" role="status">
+              <AlertDescription>Cargando el historial completo…</AlertDescription>
+            </Alert>
           )}
           {requestState.status === 'loading-more' && (
-            <p className="activity-history-message" role="status">Cargando más movimientos…</p>
+            <Alert className="activity-history-message" role="status">
+              <AlertDescription>Cargando más movimientos…</AlertDescription>
+            </Alert>
           )}
           {requestState.status === 'error' && (
-            <div className="activity-history-error">
-              <p>{requestState.message}</p>
-              <button type="button" onClick={retry}>Reintentar</button>
-            </div>
+            <Alert className="activity-history-error" variant="destructive">
+              <AlertDescription>{requestState.message}</AlertDescription>
+              <Button type="button" variant="outline" size="sm" onClick={retry}>
+                Reintentar
+              </Button>
+            </Alert>
           )}
         </div>
       )}
@@ -270,9 +288,15 @@ function ActivityDetail({ entry, onBack }: { readonly entry: Entry; readonly onB
 
   return (
     <article className="activity-detail">
-      <button autoFocus className="activity-back" type="button" onClick={onBack}>
+      <Button
+        autoFocus
+        className="activity-back"
+        type="button"
+        variant="ghost"
+        onClick={onBack}
+      >
         <ArrowLeftIcon /> Volver al historial
-      </button>
+      </Button>
 
       <header className="activity-detail-heading">
         <div>
@@ -285,10 +309,17 @@ function ActivityDetail({ entry, onBack }: { readonly entry: Entry; readonly onB
       </header>
 
       <div className="activity-detail-badges">
-        <span className={`activity-status ${entry.status}`}>{entryStatusLabel(entry.status)}</span>
-        <span>{activityRailLabel(rail)}</span>
-        <span>{incoming ? 'Ingreso' : 'Egreso'}</span>
+        <Badge
+          className={`activity-status ${entry.status}`}
+          variant={entry.status === 'failed' ? 'destructive' : 'outline'}
+        >
+          {entryStatusLabel(entry.status)}
+        </Badge>
+        <Badge variant="secondary">{activityRailLabel(rail)}</Badge>
+        <Badge variant="outline">{incoming ? 'Ingreso' : 'Egreso'}</Badge>
       </div>
+
+      <Separator className="activity-detail-separator" />
 
       <DetailSection title="Datos">
         <DetailRow label="Comisión" value={`${formatSats(entry.feeSat)} sats`} />

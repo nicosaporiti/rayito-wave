@@ -1,13 +1,27 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useWallet, useWalletRecovery } from '@lightninglabs/wavelength-react';
+import { LoaderCircle, LockKeyhole } from 'lucide-react';
 import { Backup } from './components/Backup';
 import { Brand, NetworkBadge } from './components/Brand';
 import { Dashboard } from './components/Dashboard';
 import { Onboarding, Unlock } from './components/Onboarding';
 import { BoltIcon } from './components/Icons';
+import { Alert, AlertDescription } from './components/ui/alert';
+import { Button } from './components/ui/button';
+import { Card } from './components/ui/card';
+import { Progress } from './components/ui/progress';
 
 const AUTO_LOCK_DELAY_MS = 5 * 60 * 1_000;
-const ACTIVITY_EVENTS = ['keydown', 'pointerdown', 'touchstart', 'scroll'] as const;
+const ACTIVITY_EVENTS = ['keydown', 'pointerdown', 'touchstart'] as const;
+const LOADING_LABELS: Readonly<Record<string, string>> = {
+  loading: 'Cargando el motor seguro…',
+  runtimeReady: 'Preparando la red…',
+  starting: 'Conectando con Signet…',
+  syncing: 'Sincronizando tu wallet…',
+  restoring: 'Recuperando tu wallet…',
+  stopping: 'Cerrando…',
+  stopped: 'Wallet detenida',
+};
 
 export function App() {
   const { phase, error, start, stop } = useWallet();
@@ -15,6 +29,7 @@ export function App() {
   const [pendingBackup, setPendingBackup] = useState<readonly string[] | null>(null);
   const lockPending = useRef(false);
   const isRecovering = recovery.status === 'restoring';
+  const isDashboardVisible = phase === 'ready' && pendingBackup === null;
 
   const lockWallet = useCallback(async (): Promise<void> => {
     if (lockPending.current || phase !== 'ready' || isRecovering) return;
@@ -58,10 +73,12 @@ export function App() {
 
     scheduleLock();
     ACTIVITY_EVENTS.forEach((eventName) => window.addEventListener(eventName, resetTimer));
+    window.addEventListener('scroll', resetTimer, true);
     document.addEventListener('visibilitychange', checkIdleTimeWhenVisible);
     return () => {
       window.clearTimeout(timer);
       ACTIVITY_EVENTS.forEach((eventName) => window.removeEventListener(eventName, resetTimer));
+      window.removeEventListener('scroll', resetTimer, true);
       document.removeEventListener('visibilitychange', checkIdleTimeWhenVisible);
     };
   }, [isRecovering, lockWallet, pendingBackup, phase]);
@@ -78,7 +95,7 @@ export function App() {
     return () => window.removeEventListener('beforeunload', guardRecovery);
   }, [isRecovering]);
 
-  let content;
+  let content: ReactNode;
   if (pendingBackup) {
     content = <Backup mnemonic={pendingBackup} onConfirmed={() => setPendingBackup(null)} />;
   } else {
@@ -101,32 +118,58 @@ export function App() {
   }
 
   return (
-    <div className="app-shell">
-      <header className="app-header">
+    <div className={`app-shell wallet-frame${isDashboardVisible ? ' wallet-frame--dashboard' : ''}`}>
+      <header className="app-header wallet-frame__header">
         <Brand />
         <div className="header-actions">
           <NetworkBadge />
           {phase === 'ready' && !pendingBackup && (
-            <button
+            <Button
               className="lock-button"
               type="button"
+              variant="ghost"
+              size="icon"
               disabled={isRecovering}
               onClick={() => void lockWallet()}
             >
-              {isRecovering ? 'Recuperando…' : 'Bloquear'}
-            </button>
+              {isRecovering
+                ? <LoaderCircle className="lock-button__spinner" aria-hidden="true" />
+                : <LockKeyhole aria-hidden="true" />}
+              <span className="sr-only">{isRecovering ? 'Recuperando…' : 'Bloquear'}</span>
+            </Button>
           )}
         </div>
       </header>
-      {content}
-      <footer><p>Impulsado por <a href="https://wavelength.lightning.engineering/" target="_blank" rel="noreferrer">Wavelength</a> · autocustodia sobre Ark + Lightning</p><p>Alpha · usá sólo sats de prueba</p></footer>
+      <div className={`wallet-frame__body${isDashboardVisible ? ' wallet-frame__body--dashboard' : ''}`}>
+        {content}
+      </div>
+      {!isDashboardVisible && (
+        <footer className="app-footer wallet-frame__footer">
+          <p>
+            Impulsado por{' '}
+            <a href="https://wavelength.lightning.engineering/" target="_blank" rel="noreferrer">
+              Wavelength
+            </a>{' '}
+            · autocustodia sobre Ark + Lightning
+          </p>
+          <p>Alpha · usá sólo sats de prueba</p>
+        </footer>
+      )}
     </div>
   );
 }
 
 function Loading({ phase }: { phase: string }) {
-  const labels: Record<string, string> = { loading: 'Cargando el motor seguro…', runtimeReady: 'Preparando la red…', starting: 'Conectando con Signet…', syncing: 'Sincronizando tu wallet…', restoring: 'Recuperando tu wallet…', stopping: 'Cerrando…', stopped: 'Wallet detenida' };
-  return <main className="center-stage"><div className="loader"><span><BoltIcon /></span><p>{labels[phase] ?? 'Preparando…'}</p><small>Las llaves nunca salen de este dispositivo</small></div></main>;
+  return (
+    <main className="center-stage wallet-screen">
+      <Card className="loader state-card loading-card" role="status" aria-live="polite">
+        <span className="state-card__icon"><BoltIcon /></span>
+        <p>{LOADING_LABELS[phase] ?? 'Preparando…'}</p>
+        <Progress className="loading-progress" value={33} aria-hidden="true" />
+        <small>Las llaves nunca salen de este dispositivo</small>
+      </Card>
+    </main>
+  );
 }
 
 function isWorkerError(error: Error): error is Error & { readonly code: 'worker_error' } {
@@ -142,15 +185,21 @@ function FatalError({ error }: { error: Error }) {
   };
 
   return (
-    <main className="center-stage">
-      <section className="unlock-card">
+    <main className="center-stage wallet-screen">
+      <Card
+        className="unlock-card state-card fatal-error-card"
+        role="region"
+        aria-labelledby="fatal-error-title"
+      >
         <p className="eyebrow">Algo no arrancó bien</p>
-        <h1>No pudimos abrir Rayito</h1>
-        <p className="form-error">
-          {workerFailed
-            ? 'No pudimos iniciar uno de los procesos locales de Rayito.'
-            : error.message}
-        </p>
+        <h1 id="fatal-error-title">No pudimos abrir Rayito</h1>
+        <Alert className="form-error fatal-error-alert" variant="destructive">
+          <AlertDescription>
+            {workerFailed
+              ? 'No pudimos iniciar uno de los procesos locales de Rayito.'
+              : error.message}
+          </AlertDescription>
+        </Alert>
         {workerFailed && (
           <>
             <p>Puede deberse a un bloqueo del navegador o a que el motor se detuvo inesperadamente.</p>
@@ -160,8 +209,10 @@ function FatalError({ error }: { error: Error }) {
             </p>
           </>
         )}
-        <button className="primary-button" onClick={retry}>Reintentar</button>
-      </section>
+        <Button className="primary-button state-card__action" type="button" size="lg" onClick={retry}>
+          Reintentar
+        </Button>
+      </Card>
     </main>
   );
 }

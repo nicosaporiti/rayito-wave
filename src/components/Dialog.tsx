@@ -6,6 +6,8 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 type DialogProps = {
   readonly ariaLabel: string;
@@ -114,7 +116,17 @@ export function Dialog({ ariaLabel, children, onClose, panelClassName = '' }: Di
   return createPortal(
     <div ref={overlayRef} className="action-overlay" onMouseDown={closeOnBackdrop}>
       <section ref={panelRef} className={panelClasses} role="dialog" aria-modal="true" aria-label={ariaLabel}>
-        <button ref={closeButtonRef} className="panel-close" type="button" onClick={onClose} aria-label="Cerrar">×</button>
+        <Button
+          ref={closeButtonRef}
+          className="panel-close"
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={onClose}
+          aria-label="Cerrar"
+        >
+          <X aria-hidden="true" />
+        </Button>
         <div className="action-panel-body">{children}</div>
       </section>
     </div>,
