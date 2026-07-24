@@ -1712,8 +1712,10 @@ form {
   position: relative;
   width: min(560px, 100%);
   max-height: calc(100dvh - 40px);
+  min-height: 0;
   overflow: hidden;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   color: var(--foreground);
   background: #111314;
   border: 1px solid var(--hairline-strong);
@@ -1723,9 +1725,12 @@ form {
 }
 
 .action-panel-body {
+  flex: 0 1 auto;
   min-height: 0;
   padding: 34px;
+  overflow-x: hidden;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   scrollbar-color: #343738 transparent;
   scroll-padding-block: 24px;
