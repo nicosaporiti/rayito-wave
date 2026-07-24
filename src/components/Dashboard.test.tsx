@@ -232,6 +232,7 @@ describe('Dashboard receive flow', () => {
     wallet.activity = [receiveEntry('pending')];
     view.rerender(<Dashboard />);
     await waitFor(() => expect(screen.getByText('Esperando 2.100 sats')).toBeInTheDocument());
+    expect(document.querySelector('.received-funds-wash')).not.toBeInTheDocument();
 
     wallet.activity = [receiveEntry('complete')];
     view.rerender(<Dashboard />);
@@ -239,6 +240,8 @@ describe('Dashboard receive flow', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(screen.getByText('Pago recibido')).toBeInTheDocument();
     expect(screen.getByText('2.100 sats ya están disponibles.')).toBeInTheDocument();
+    const confirmationWash = document.querySelector<HTMLElement>('.received-funds-wash');
+    expect(confirmationWash).toHaveAttribute('aria-hidden', 'true');
   });
 
   it('rejects out-of-range Lightning and on-chain amounts before submission', () => {

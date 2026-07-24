@@ -2278,6 +2278,24 @@ form {
   animation: toast-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+.received-funds-wash {
+  position: fixed;
+  z-index: 190;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      circle at 50% 42%,
+      rgba(117, 201, 156, 0.42) 0%,
+      rgba(71, 165, 115, 0.26) 44%,
+      rgba(38, 111, 73, 0.16) 72%,
+      rgba(22, 75, 49, 0.1) 100%
+    ),
+    rgba(43, 136, 86, 0.12);
+  animation: received-funds-wash 1.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: opacity;
+}
+
 .payment-toast-icon {
   width: 36px;
   height: 36px;
@@ -2550,6 +2568,21 @@ form {
   from {
     opacity: 0;
     transform: translateY(-10px);
+  }
+}
+
+@keyframes received-funds-wash {
+  0%,
+  100% {
+    opacity: 0;
+  }
+
+  28% {
+    opacity: 1;
+  }
+
+  48% {
+    opacity: 0.88;
   }
 }
 
@@ -3238,6 +3271,10 @@ form {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .received-funds-wash {
+    display: none;
+  }
+
   .deposit-status__pulse {
     animation: none;
   }

@@ -340,6 +340,9 @@ export function Dashboard({
           onInvoiceCreated={trackInvoice}
         />
       )}
+      {notice?.type === 'received' && (
+        <ReceivedFundsWash key={notice.entryId} />
+      )}
       {notice && <PaymentToast notice={notice} onDismiss={() => setNotice(null)} />}
       {activityDialog && (
         <ActivityDialog
@@ -467,6 +470,13 @@ function PaymentToast({ notice, onDismiss }: PaymentToastProps) {
         ×
       </Button>
     </aside>,
+    document.body,
+  );
+}
+
+function ReceivedFundsWash() {
+  return createPortal(
+    <div className="received-funds-wash" aria-hidden="true" />,
     document.body,
   );
 }
