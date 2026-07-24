@@ -11,6 +11,7 @@ import type {
   Entry,
   PrepareSendResult,
   SendRequest,
+  UseWalletDepositResult,
 } from '@lightninglabs/wavelength-react';
 import {
   useWalletActivity,
@@ -45,6 +46,7 @@ import {
   LinkIcon,
 } from './Icons';
 import { LightningInvoiceResult } from './LightningInvoiceResult';
+import { OnchainDepositStatus } from './OnchainDepositStatus';
 import { QrInvoiceScanner } from './QrInvoiceScanner';
 import { SignetFaucetGuide } from './SignetFaucetGuide';
 import {
@@ -65,13 +67,19 @@ import { Textarea } from './ui/textarea';
 type WalletAction = 'receive' | 'deposit' | 'send';
 type Action = WalletAction | null;
 const DASHBOARD_VIEWS = ['home', 'activity'] as const;
-type DashboardView = (typeof DASHBOARD_VIEWS)[number];
+export type DashboardView = (typeof DASHBOARD_VIEWS)[number];
+type DashboardProps = {
+  readonly onViewChange?: (view: DashboardView) => void;
+  readonly view?: DashboardView;
+};
 type ActivityDialogState =
   | { readonly type: 'history' }
   | { readonly type: 'detail'; readonly entryId: string }
   | null;
 type ActionDialogProps = {
   readonly action: WalletAction;
+  readonly depositController: UseWalletDepositResult;
+  readonly depositEntry: Entry | null;
   readonly onClose: () => void;
   readonly onInvoiceCreated: (entryId: string) => void;
 };
@@ -110,12 +118,16 @@ function isDashboardView(value: string): value is DashboardView {
   return DASHBOARD_VIEWS.some((view) => view === value);
 }
 
-export function Dashboard() {
+export function Dashboard({
+  onViewChange,
+  view,
+}: DashboardProps = {}) {
   const balance = useWalletBalance();
   const info = useWalletInfo();
   const activity = useWalletActivity();
+  const depositController = useWalletDeposit();
   const [action, setAction] = useState<Action>(null);
-  const [activeView, setActiveView] = useState<DashboardView>('home');
+  const [internalView, setInternalView] = useState<DashboardView>('home');
   const [activityDialog, setActivityDialog] = useState<ActivityDialogState>(null);
   const [notice, setNotice] = useState<PaymentNotice | null>(null);
   const [activeReceiveEntryId, setActiveReceiveEntryId] = useState<string | null>(null);
@@ -164,10 +176,24 @@ export function Dashboard() {
   const hasPendingBalance = pendingInSat > 0 || pendingOutSat > 0;
   const confirmedSat = balance?.confirmedSat ?? 0;
   const blockHeight = info?.blockHeight ?? 0;
+  const depositEntry = depositController.depositData
+    ? activity.find((entry) => (
+        entry.kind === 'deposit'
+        && (
+          entry.id === depositController.depositData?.entry.id
+          || entry.request?.onchainAddress === depositController.depositData?.address
+        )
+      )) ?? depositController.depositData.entry
+    : null;
   const formattedConfirmedSat = formatSats(confirmedSat);
   const balanceScale = balanceScaleFor(formattedConfirmedSat);
+  const activeView = view ?? internalView;
+  const selectView = (nextView: DashboardView): void => {
+    if (view === undefined) setInternalView(nextView);
+    onViewChange?.(nextView);
+  };
   const changeView = (value: string): void => {
-    if (isDashboardView(value)) setActiveView(value);
+    if (isDashboardView(value)) selectView(value);
   };
 
   return (
@@ -203,6 +229,13 @@ export function Dashboard() {
                   )}
                 </div>
               </div>
+
+              {depositController.depositData && depositEntry && action !== 'deposit' && (
+                <OnchainDepositStatus
+                  address={depositController.depositData.address}
+                  entry={depositEntry}
+                />
+              )}
 
               <div className="balance-actions" role="group" aria-label="Acciones de la wallet">
                 <Button
@@ -275,7 +308,7 @@ export function Dashboard() {
             <TabsTrigger
               className="dashboard-nav-item"
               value="home"
-              onClick={() => setActiveView('home')}
+              onClick={() => selectView('home')}
             >
               <HomeIcon />
               <span>Inicio</span>
@@ -284,7 +317,7 @@ export function Dashboard() {
               className="dashboard-nav-item"
               value="activity"
               aria-label={`Movimientos, ${activity.length}`}
-              onClick={() => setActiveView('activity')}
+              onClick={() => selectView('activity')}
             >
               <ActivityIcon />
               <span>Movimientos</span>
@@ -301,6 +334,8 @@ export function Dashboard() {
       {action && (
         <ActionDialog
           action={action}
+          depositController={depositController}
+          depositEntry={depositEntry}
           onClose={closeAction}
           onInvoiceCreated={trackInvoice}
         />
@@ -378,14 +413,25 @@ function MovementsView({
   );
 }
 
-function ActionDialog({ action, onClose, onInvoiceCreated }: ActionDialogProps) {
+function ActionDialog({
+  action,
+  depositController,
+  depositEntry,
+  onClose,
+  onInvoiceCreated,
+}: ActionDialogProps) {
   let form;
   switch (action) {
     case 'receive':
       form = <ReceiveForm onInvoiceCreated={onInvoiceCreated} />;
       break;
     case 'deposit':
-      form = <DepositForm />;
+      form = (
+        <DepositForm
+          controller={depositController}
+          entry={depositEntry}
+        />
+      );
       break;
     case 'send':
       form = <SendForm />;
@@ -519,8 +565,20 @@ function ReceiveForm({ onInvoiceCreated }: ReceiveFormProps) {
   );
 }
 
-function DepositForm() {
-  const { deposit, depositPending, depositData, depositError } = useWalletDeposit();
+function DepositForm({
+  controller,
+  entry,
+}: {
+  readonly controller: UseWalletDepositResult;
+  readonly entry: Entry | null;
+}) {
+  const {
+    deposit,
+    depositPending,
+    depositData,
+    depositError,
+  } = controller;
+  const canStartAnotherDeposit = entry?.status === 'complete' || entry?.status === 'failed';
   const requestDeposit = async (): Promise<void> => {
     try { await deposit(); } catch { /* Error is rendered from depositError. */ }
   };
@@ -533,6 +591,19 @@ function DepositForm() {
       {depositData ? (
         <>
           <ResultBox label="Dirección Signet" value={depositData.address} />
+          {entry && <OnchainDepositStatus address={depositData.address} entry={entry} />}
+          {canStartAnotherDeposit && (
+            <Button
+              className="new-deposit-button"
+              type="button"
+              variant="outline"
+              onClick={() => void requestDeposit()}
+              disabled={depositPending}
+            >
+              {depositPending ? 'Generando…' : 'Generar otra dirección'}
+              <LinkIcon />
+            </Button>
+          )}
           <SignetFaucetGuide address={depositData.address} />
         </>
       ) : (

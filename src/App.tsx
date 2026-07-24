@@ -3,9 +3,9 @@ import { useWallet, useWalletRecovery } from '@lightninglabs/wavelength-react';
 import { LoaderCircle, LockKeyhole } from 'lucide-react';
 import { Backup } from './components/Backup';
 import { Brand, NetworkBadge } from './components/Brand';
-import { Dashboard } from './components/Dashboard';
+import { Dashboard, type DashboardView } from './components/Dashboard';
 import { Onboarding, Unlock } from './components/Onboarding';
-import { BoltIcon } from './components/Icons';
+import { RayitoMark } from './components/RayitoMark';
 import { Alert, AlertDescription } from './components/ui/alert';
 import { Button } from './components/ui/button';
 import { Card } from './components/ui/card';
@@ -27,6 +27,7 @@ export function App() {
   const { phase, error, start, stop } = useWallet();
   const { recovery } = useWalletRecovery();
   const [pendingBackup, setPendingBackup] = useState<readonly string[] | null>(null);
+  const [dashboardView, setDashboardView] = useState<DashboardView>('home');
   const lockPending = useRef(false);
   const isRecovering = recovery.status === 'restoring';
   const isDashboardVisible = phase === 'ready' && pendingBackup === null;
@@ -107,7 +108,12 @@ export function App() {
         content = <Unlock />;
         break;
       case 'ready':
-        content = <Dashboard />;
+        content = (
+          <Dashboard
+            view={dashboardView}
+            onViewChange={setDashboardView}
+          />
+        );
         break;
       case 'error':
         content = <FatalError error={error ?? new Error('No pudimos iniciar la wallet.')} />;
@@ -120,7 +126,7 @@ export function App() {
   return (
     <div className={`app-shell wallet-frame${isDashboardVisible ? ' wallet-frame--dashboard' : ''}`}>
       <header className="app-header wallet-frame__header">
-        <Brand />
+        <Brand onHome={() => setDashboardView('home')} />
         <div className="header-actions">
           <NetworkBadge />
           {phase === 'ready' && !pendingBackup && (
@@ -163,7 +169,7 @@ function Loading({ phase }: { phase: string }) {
   return (
     <main className="center-stage wallet-screen">
       <Card className="loader state-card loading-card" role="status" aria-live="polite">
-        <span className="state-card__icon"><BoltIcon /></span>
+        <span className="state-card__icon"><RayitoMark tone="monochrome" /></span>
         <p>{LOADING_LABELS[phase] ?? 'Preparando…'}</p>
         <Progress className="loading-progress" value={33} aria-hidden="true" />
         <small>Las llaves nunca salen de este dispositivo</small>

@@ -10,15 +10,10 @@ import {
   Link2,
   ReceiptText,
   ScanLine,
-  Zap,
   type LucideProps,
 } from 'lucide-react';
 
 type IconProps = Readonly<LucideProps>;
-
-export function BoltIcon(props: IconProps) {
-  return <Zap aria-hidden="true" {...props} />;
-}
 
 export function ArrowUpIcon(props: IconProps) {
   return <ArrowUp aria-hidden="true" {...props} />;

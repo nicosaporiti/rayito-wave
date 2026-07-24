@@ -261,23 +261,31 @@ a {
   height: 54px;
   display: grid;
   place-items: center;
-  color: #0b0c0c;
-  background: var(--rayito);
+  background: transparent;
   border: 0;
-  border-radius: 50%;
+  border-radius: 12px;
   box-shadow: none;
-  transition: transform 180ms ease;
+  transition: filter 180ms ease, transform 180ms ease;
 }
 
 .wallet-brand:hover .wallet-brand__mark {
   transform: rotate(-5deg) scale(1.03);
+  filter: drop-shadow(0 0 8px rgba(255, 212, 59, 0.2));
 }
 
-.wallet-brand__mark svg {
-  width: 25px;
-  height: 25px;
-  fill: currentColor;
-  stroke-width: 1.6;
+.rayito-mark {
+  display: block;
+  object-fit: contain;
+}
+
+.rayito-mark--monochrome {
+  filter: grayscale(1) brightness(1.28);
+  opacity: 0.9;
+}
+
+.wallet-brand__mark .rayito-mark {
+  width: 42px;
+  height: 42px;
 }
 
 .wallet-brand__name {
@@ -532,6 +540,104 @@ a {
   font-family: var(--mono);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+.deposit-status {
+  position: relative;
+  margin: -14px 0 30px;
+  padding: 10px 12px 9px;
+  overflow: hidden;
+  color: var(--text-soft);
+  background: rgba(255, 255, 255, 0.018);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+}
+
+.deposit-view .deposit-status {
+  margin: 12px 0 0;
+}
+
+.deposit-status__line {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 9px;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.deposit-status__pulse {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  background: var(--rayito);
+  border-radius: 50%;
+  box-shadow: 0 0 0 0 rgba(255, 212, 59, 0.35);
+  animation: deposit-pulse 1.8s ease-out infinite;
+}
+
+.deposit-status__line strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--foreground);
+  font-weight: 690;
+  text-overflow: ellipsis;
+}
+
+.deposit-status__amount {
+  color: var(--foreground);
+  font-family: var(--mono);
+  font-size: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.deposit-status__detail {
+  margin-left: auto;
+  color: var(--text-faint);
+}
+
+.deposit-status__line a {
+  color: var(--rayito);
+  font-size: 8px;
+  font-weight: 680;
+  text-decoration: none;
+}
+
+.deposit-status__line a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.deposit-status__progress {
+  height: 2px;
+  margin-top: 8px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.deposit-status__progress > div {
+  background: var(--rayito);
+  transition: transform 500ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.deposit-status--complete .deposit-status__pulse,
+.deposit-status--complete .deposit-status__progress > div {
+  background: var(--success);
+  animation: none;
+}
+
+.deposit-status--failed .deposit-status__pulse,
+.deposit-status--failed .deposit-status__progress > div {
+  background: var(--danger);
+  animation: none;
+}
+
+.deposit-status__offline {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-faint);
+  font-size: 7px;
+  text-align: right;
 }
 
 .balance-actions {
@@ -1141,6 +1247,7 @@ a {
   padding: 20px 0 0;
   display: grid;
   grid-template-columns: 38px minmax(0, 1fr);
+  align-items: center;
   gap: 13px;
   text-align: left;
   border-top: 1px solid var(--hairline);
@@ -1151,14 +1258,15 @@ a {
   height: 38px;
   display: grid;
   place-items: center;
-  color: #0a0b0b;
-  background: var(--rayito);
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--hairline);
   border-radius: 50%;
 }
 
-.custody-icon svg {
-  width: 18px;
-  fill: currentColor;
+.custody-icon .security-mark {
+  width: 30px;
+  height: 30px;
+  display: block;
 }
 
 .custody-note strong {
@@ -1388,15 +1496,25 @@ form {
   margin: 0 auto 26px;
   display: grid;
   place-items: center;
-  color: #0a0b0b;
-  background: var(--rayito);
-  border: 0;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--hairline-strong);
   border-radius: 50%;
 }
 
-.state-card__icon svg {
-  width: 28px;
-  fill: currentColor;
+.state-card__icon .rayito-mark {
+  width: 38px;
+  height: 38px;
+}
+
+.state-card__icon.security-emblem {
+  background: transparent;
+  border: 0;
+}
+
+.state-card__icon .security-mark {
+  width: 62px;
+  height: 62px;
+  display: block;
 }
 
 .state-card > p:not(.eyebrow):not(.form-error) {
@@ -1659,6 +1777,14 @@ form {
   color: #b9b19b !important;
   background: rgba(255, 255, 255, 0.025);
   border: 1px solid var(--hairline);
+  border-radius: 14px;
+}
+
+.new-deposit-button {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 12px;
+  border-color: var(--hairline-strong);
   border-radius: 14px;
 }
 
@@ -2427,6 +2553,11 @@ form {
   100% { box-shadow: 0 0 0 0 rgba(117, 201, 156, 0); }
 }
 
+@keyframes deposit-pulse {
+  70% { box-shadow: 0 0 0 5px rgba(255, 212, 59, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 212, 59, 0); }
+}
+
 @keyframes loading-drift {
   from { transform: translateX(-72%); }
   to { transform: translateX(72%); }
@@ -2544,6 +2675,20 @@ form {
 
   .balance-meta {
     margin-top: 18px;
+  }
+
+  .deposit-status {
+    margin-top: -18px;
+    margin-bottom: 24px;
+  }
+
+  .deposit-view .deposit-status {
+    margin-top: 12px;
+  }
+
+  .deposit-status__detail {
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .balance-actions {
@@ -2903,9 +3048,9 @@ form {
     height: 42px;
   }
 
-  .wallet-brand__mark svg {
-    width: 21px;
-    height: 21px;
+  .wallet-brand__mark .rayito-mark {
+    width: 34px;
+    height: 34px;
   }
 
   .balance-panel {
@@ -2993,6 +3138,10 @@ form {
 
   .balance-total {
     padding: 20px 0 17px;
+  }
+
+  .deposit-status {
+    margin: 0 0 12px;
   }
 
   .quick-action {
@@ -3084,6 +3233,10 @@ form {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .deposit-status__pulse {
+    animation: none;
+  }
+
   *,
   *::before,
   *::after {

@@ -5,7 +5,8 @@ import {
   useWalletUnlock,
 } from '@lightninglabs/wavelength-react';
 import { normalizeMnemonic, validatePassword } from '../lib/validation';
-import { ArrowUpIcon, BoltIcon } from './Icons';
+import { ArrowUpIcon } from './Icons';
+import { SecurityMark } from './SecurityMark';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
@@ -76,7 +77,7 @@ export function Onboarding({ onCreated }: OnboardingProps) {
         <h1 id="onboarding-title">Tu plata.<br /><em>En tus manos.</em></h1>
         <p className="story-copy">Una wallet para usar Bitcoin y Lightning sin entregar tus llaves. Rayito corre en este dispositivo; Wavelength conecta los rieles por debajo.</p>
         <div className="custody-note">
-          <span className="custody-icon"><BoltIcon /></span>
+          <span className="custody-icon"><SecurityMark /></span>
           <div><strong>Autocustodia, de verdad</strong><p>La frase de recuperación se genera y cifra localmente. Ni Rayito ni Wavelength pueden verla.</p></div>
         </div>
       </section>
@@ -191,7 +192,9 @@ export function Unlock() {
         role="region"
         aria-labelledby="unlock-title"
       >
-        <span className="round-bolt state-card__icon"><BoltIcon /></span>
+        <span className="security-emblem state-card__icon">
+          <SecurityMark />
+        </span>
         <p className="eyebrow">Qué bueno verte de nuevo</p>
         <h1 id="unlock-title">Desbloqueá tu wallet</h1>
         <p>Tu wallet cifrada vive en este navegador.</p>

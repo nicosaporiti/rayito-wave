@@ -368,6 +368,20 @@ describe('Dashboard receive flow', () => {
     expect(mempoolLink).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
+  it('allows another deposit after the previous one reaches a terminal state', () => {
+    wallet.depositData = {
+      address: 'tb1qcompleteddeposit',
+      entry: historyEntry(9, 'deposit', 'onchain'),
+    };
+    render(<Dashboard />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fondear' }));
+    const dialog = screen.getByRole('dialog', { name: 'Fondear wallet' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Generar otra dirección' }));
+
+    expect(deposit).toHaveBeenCalledOnce();
+  });
+
   it('shows five recent movements and supports history filters and full details', async () => {
     const entries = [
       historyEntry(1, 'receive', 'lightning'),

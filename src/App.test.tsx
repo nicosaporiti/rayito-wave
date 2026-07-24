@@ -35,17 +35,29 @@ vi.mock('@lightninglabs/wavelength-react', () => ({
 }));
 vi.mock('./components/Backup', () => ({ Backup: () => <main>Backup</main> }));
 vi.mock('./components/Brand', () => ({
-  Brand: () => <span>Rayito</span>,
+  Brand: ({ onHome }: { onHome: () => void }) => (
+    <button type="button" onClick={onHome}>Rayito</button>
+  ),
   NetworkBadge: () => <span>Signet</span>,
 }));
 vi.mock('./components/Dashboard', () => ({
-  Dashboard: () => <main className="dashboard-view">Dashboard</main>,
+  Dashboard: ({
+    onViewChange,
+    view,
+  }: {
+    onViewChange: (view: 'home' | 'activity') => void;
+    view: 'home' | 'activity';
+  }) => (
+    <main className="dashboard-view" data-view={view}>
+      <span>Dashboard</span>
+      <button type="button" onClick={() => onViewChange('activity')}>Movimientos mock</button>
+    </main>
+  ),
 }));
 vi.mock('./components/Onboarding', () => ({
   Onboarding: () => <main>Onboarding</main>,
   Unlock: () => <main>Unlock</main>,
 }));
-vi.mock('./components/Icons', () => ({ BoltIcon: () => <span /> }));
 
 describe('App wallet locking', () => {
   beforeEach(() => {
@@ -209,6 +221,19 @@ describe('App wallet locking', () => {
     expect(document.querySelector('.wallet-frame--dashboard')).toBeInTheDocument();
     expect(screen.queryByText(/Impulsado por/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Alpha/)).not.toBeInTheDocument();
+  });
+
+  it('returns to dashboard home from the brand without restarting the wallet', () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Movimientos mock' }));
+    expect(screen.getByText('Dashboard').parentElement).toHaveAttribute('data-view', 'activity');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rayito' }));
+
+    expect(screen.getByText('Dashboard').parentElement).toHaveAttribute('data-view', 'home');
+    expect(wallet.stop).not.toHaveBeenCalled();
+    expect(wallet.start).not.toHaveBeenCalled();
   });
 
   it('prevents locking and warns before unloading during recovery', async () => {
