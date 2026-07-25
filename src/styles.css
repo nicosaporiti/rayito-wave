@@ -298,7 +298,7 @@ a {
   text-transform: uppercase;
 }
 
-.wallet-brand::after {
+.wallet-brand__tagline {
   grid-column: 2;
   align-self: start;
   overflow: hidden;
@@ -309,13 +309,47 @@ a {
   line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
-  content: "Tus sats, listos";
 }
 
 .header-actions {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.locale-switch {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  gap: 2px;
+  background: var(--surface-raised);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+}
+
+.locale-switch__option {
+  min-height: 22px;
+  height: auto;
+  padding: 3px 9px;
+  color: var(--text-soft);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 680;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  transition: color 160ms ease, background 160ms ease;
+}
+
+.locale-switch__option:hover:not(:disabled) {
+  color: var(--foreground);
+  background: var(--surface-hover);
+}
+
+.locale-switch__option[aria-pressed="true"] {
+  color: var(--background);
+  background: var(--foreground);
 }
 
 .network-status {
@@ -2653,7 +2687,7 @@ form {
     font-size: 9px;
   }
 
-  .wallet-brand::after {
+  .wallet-brand__tagline {
     font-size: 16px;
   }
 

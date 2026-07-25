@@ -4,26 +4,30 @@ import { LoaderCircle, LockKeyhole } from 'lucide-react';
 import { Backup } from './components/Backup';
 import { Brand, NetworkBadge } from './components/Brand';
 import { Dashboard, type DashboardView } from './components/Dashboard';
+import { LanguageSwitch } from './components/LanguageSwitch';
 import { Onboarding, Unlock } from './components/Onboarding';
 import { RayitoMark } from './components/RayitoMark';
 import { Alert, AlertDescription } from './components/ui/alert';
 import { Button } from './components/ui/button';
 import { Card } from './components/ui/card';
 import { Progress } from './components/ui/progress';
+import { useI18n } from './i18n/useI18n';
+import type { MessageKey } from './i18n/messages';
 
 const AUTO_LOCK_DELAY_MS = 5 * 60 * 1_000;
 const ACTIVITY_EVENTS = ['keydown', 'pointerdown', 'touchstart'] as const;
-const LOADING_LABELS: Readonly<Record<string, string>> = {
-  loading: 'Cargando el motor seguro…',
-  runtimeReady: 'Preparando la red…',
-  starting: 'Conectando con Signet…',
-  syncing: 'Sincronizando tu wallet…',
-  restoring: 'Recuperando tu wallet…',
-  stopping: 'Cerrando…',
-  stopped: 'Wallet detenida',
+const LOADING_LABEL_KEYS: Readonly<Record<string, MessageKey>> = {
+  loading: 'app.loading.loading',
+  runtimeReady: 'app.loading.runtimeReady',
+  starting: 'app.loading.starting',
+  syncing: 'app.loading.syncing',
+  restoring: 'app.loading.restoring',
+  stopping: 'app.loading.stopping',
+  stopped: 'app.loading.stopped',
 };
 
 export function App() {
+  const { t } = useI18n();
   const { phase, error, start, stop } = useWallet();
   const { recovery } = useWalletRecovery();
   const [pendingBackup, setPendingBackup] = useState<readonly string[] | null>(null);
@@ -116,7 +120,7 @@ export function App() {
         );
         break;
       case 'error':
-        content = <FatalError error={error ?? new Error('No pudimos iniciar la wallet.')} />;
+        content = <FatalError error={error ?? new Error(t('app.error.default'))} />;
         break;
       default:
         content = <Loading phase={phase} />;
@@ -128,6 +132,7 @@ export function App() {
       <header className="app-header wallet-frame__header">
         <Brand onHome={() => setDashboardView('home')} />
         <div className="header-actions">
+          <LanguageSwitch />
           <NetworkBadge />
           {phase === 'ready' && !pendingBackup && (
             <Button
@@ -141,7 +146,9 @@ export function App() {
               {isRecovering
                 ? <LoaderCircle className="lock-button__spinner" aria-hidden="true" />
                 : <LockKeyhole aria-hidden="true" />}
-              <span className="sr-only">{isRecovering ? 'Recuperando…' : 'Bloquear'}</span>
+              <span className="sr-only">
+                {isRecovering ? t('app.lock.recovering') : t('app.lock.lock')}
+              </span>
             </Button>
           )}
         </div>
@@ -152,13 +159,13 @@ export function App() {
       {!isDashboardVisible && (
         <footer className="app-footer wallet-frame__footer">
           <p>
-            Impulsado por{' '}
+            {t('app.footer.poweredBy')}{' '}
             <a href="https://wavelength.lightning.engineering/" target="_blank" rel="noreferrer">
               Wavelength
             </a>{' '}
-            · autocustodia sobre Ark + Lightning
+            {t('app.footer.custody')}
           </p>
-          <p>Alpha · usá sólo sats de prueba</p>
+          <p>{t('app.footer.alpha')}</p>
         </footer>
       )}
     </div>
@@ -166,13 +173,15 @@ export function App() {
 }
 
 function Loading({ phase }: { phase: string }) {
+  const { t } = useI18n();
+
   return (
     <main className="center-stage wallet-screen">
       <Card className="loader state-card loading-card" role="status" aria-live="polite">
         <span className="state-card__icon"><RayitoMark tone="monochrome" /></span>
-        <p>{LOADING_LABELS[phase] ?? 'Preparando…'}</p>
+        <p>{t(LOADING_LABEL_KEYS[phase] ?? 'app.loading.fallback')}</p>
         <Progress className="loading-progress" value={33} aria-hidden="true" />
-        <small>Las llaves nunca salen de este dispositivo</small>
+        <small>{t('app.loading.keysNote')}</small>
       </Card>
     </main>
   );
@@ -183,6 +192,7 @@ function isWorkerError(error: Error): error is Error & { readonly code: 'worker_
 }
 
 function FatalError({ error }: { error: Error }) {
+  const { t } = useI18n();
   const workerFailed = isWorkerError(error);
   const retry = (): void => {
     const url = new URL(window.location.href);
@@ -197,26 +207,22 @@ function FatalError({ error }: { error: Error }) {
         role="region"
         aria-labelledby="fatal-error-title"
       >
-        <p className="eyebrow">Algo no arrancó bien</p>
-        <h1 id="fatal-error-title">No pudimos abrir Rayito</h1>
+        <p className="eyebrow">{t('app.error.eyebrow')}</p>
+        <h1 id="fatal-error-title">{t('app.error.title')}</h1>
         <Alert className="form-error fatal-error-alert" variant="destructive">
           <AlertDescription>
-            {workerFailed
-              ? 'No pudimos iniciar uno de los procesos locales de Rayito.'
-              : error.message}
+            {workerFailed ? t('app.error.worker') : error.message}
           </AlertDescription>
         </Alert>
         {workerFailed && (
           <>
-            <p>Puede deberse a un bloqueo del navegador o a que el motor se detuvo inesperadamente.</p>
-            <p><small>Detalle técnico: {error.message}</small></p>
-            <p>
-              Si probás otro perfil o navegador, la wallet no aparecerá automáticamente: necesitás tus 24 palabras para recuperarla. No borres los datos del perfil original.
-            </p>
+            <p>{t('app.error.workerHint')}</p>
+            <p><small>{t('app.error.technicalDetail', { message: error.message })}</small></p>
+            <p>{t('app.error.profileWarning')}</p>
           </>
         )}
         <Button className="primary-button state-card__action" type="button" size="lg" onClick={retry}>
-          Reintentar
+          {t('app.error.retry')}
         </Button>
       </Card>
     </main>

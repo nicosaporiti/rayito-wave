@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import type { Entry } from '@lightninglabs/wavelength-react';
-import { formatSats } from '../lib/format';
+import { useI18n } from '../i18n/useI18n';
 import {
   depositMonitorState,
   parseEsploraDeposit,
@@ -43,7 +43,7 @@ async function fetchChainSnapshot(address: string, signal: AbortSignal): Promise
   ]);
 
   if (!transactionsResponse.ok || !tipResponse.ok) {
-    throw new Error(`Esplora no respondió (${transactionsResponse.status}/${tipResponse.status}).`);
+    throw new Error(`Esplora did not respond (${transactionsResponse.status}/${tipResponse.status}).`);
   }
 
   const [transactions, tip] = await Promise.all([
@@ -63,6 +63,7 @@ export function OnchainDepositStatus({
   address,
   entry,
 }: OnchainDepositStatusProps): ReactElement {
+  const { formatSats, t } = useI18n();
   const [snapshot, setSnapshot] = useState<ChainSnapshot>(EMPTY_SNAPSHOT);
   const terminal = isTerminalDeposit(entry);
 
@@ -109,6 +110,10 @@ export function OnchainDepositStatus({
     : { ...EMPTY_SNAPSHOT, address };
   const state = depositMonitorState(entry, visibleSnapshot.deposit, visibleSnapshot.tipHeight);
   const hasAmount = state.stage !== 'waiting' && state.stage !== 'failed' && state.amountSat > 0;
+  const title = t(state.titleKey);
+  const detail = state.stage === 'failed' && state.failureReason
+    ? state.failureReason
+    : t(state.detailKey);
   const txUrl = 'txid' in state && state.txid
     ? `https://mempool.space/signet/tx/${encodeURIComponent(state.txid)}`
     : '';
@@ -116,27 +121,30 @@ export function OnchainDepositStatus({
   return (
     <section
       className={`deposit-status deposit-status--${state.stage}`}
-      aria-label="Estado del depósito on-chain"
+      aria-label={t('depositStatus.aria')}
       aria-live="polite"
     >
       <div className="deposit-status__line">
         <span className="deposit-status__pulse" aria-hidden="true" />
-        <strong>{state.title}</strong>
+        <strong>{title}</strong>
         {hasAmount && <span className="deposit-status__amount">+{formatSats(state.amountSat)} sats</span>}
-        <span className="deposit-status__detail">{state.detail}</span>
+        <span className="deposit-status__detail">{detail}</span>
         {txUrl && (
           <a href={txUrl} target="_blank" rel="noopener noreferrer">
-            Ver tx
+            {t('depositStatus.viewTx')}
           </a>
         )}
       </div>
       <Progress
         className="deposit-status__progress"
         value={state.progress}
-        aria-label={`${state.title}: ${state.progress}%`}
+        aria-label={t('depositStatus.progress.aria', {
+          title,
+          progress: state.progress,
+        })}
       />
       {visibleSnapshot.unavailable && (
-        <span className="deposit-status__offline">Actualización de red pausada</span>
+        <span className="deposit-status__offline">{t('depositStatus.offline')}</span>
       )}
     </section>
   );

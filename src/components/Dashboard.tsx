@@ -24,7 +24,8 @@ import {
   useWalletSend,
 } from '@lightninglabs/wavelength-react';
 import { recentActivity } from '../lib/activity';
-import { formatSats } from '../lib/format';
+import { useI18n } from '../i18n/useI18n';
+import type { MessageKey } from '../i18n/messages';
 import {
   activityStatusIndex,
   settledPaymentNotice,
@@ -93,11 +94,11 @@ type MovementsViewProps = {
 };
 type BalanceScale = 'compact' | 'default' | 'medium';
 
-const ACTION_DIALOG_LABELS = {
-  deposit: 'Fondear wallet',
-  receive: 'Recibir por Lightning',
-  send: 'Enviar pago',
-} as const satisfies Record<WalletAction, string>;
+const ACTION_DIALOG_LABEL_KEYS = {
+  deposit: 'dashboard.action.deposit',
+  receive: 'dashboard.action.receive',
+  send: 'dashboard.action.send',
+} as const satisfies Record<WalletAction, MessageKey>;
 const RECEIVE_PROGRESS_PERCENT = {
   route: 28,
   slow: 88,
@@ -122,6 +123,7 @@ export function Dashboard({
   onViewChange,
   view,
 }: DashboardProps = {}) {
+  const { formatSats, t } = useI18n();
   const balance = useWalletBalance();
   const info = useWalletInfo();
   const activity = useWalletActivity();
@@ -203,14 +205,16 @@ export function Dashboard({
           <TabsContent className="dashboard-view dashboard-home-view" value="home">
             <section className="balance-panel" aria-labelledby="balance-heading">
               <header className="balance-header">
-                <span className="balance-label" id="balance-heading">Saldo disponible</span>
+                <span className="balance-label" id="balance-heading">
+                  {t('dashboard.balance.label')}
+                </span>
                 <Badge
                   className="connection"
                   variant="outline"
-                  aria-label={`Conectado, bloque ${blockHeight}`}
+                  aria-label={t('dashboard.balance.connected', { height: blockHeight })}
                 >
                   <span className="connection-dot" aria-hidden="true" />
-                  En línea
+                  {t('dashboard.balance.online')}
                 </Badge>
               </header>
 
@@ -220,12 +224,18 @@ export function Dashboard({
                   <span>sats</span>
                 </p>
                 <div className="balance-meta" aria-live="polite">
-                  {!hasPendingBalance && <span className="balance-ready">Saldo listo para usar</span>}
+                  {!hasPendingBalance && (
+                    <span className="balance-ready">{t('dashboard.balance.ready')}</span>
+                  )}
                   {pendingInSat > 0 && (
-                    <span><strong>+{formatSats(pendingInSat)}</strong> entrando</span>
+                    <span>
+                      <strong>+{formatSats(pendingInSat)}</strong> {t('dashboard.balance.incoming')}
+                    </span>
                   )}
                   {pendingOutSat > 0 && (
-                    <span><strong>−{formatSats(pendingOutSat)}</strong> saliendo</span>
+                    <span>
+                      <strong>−{formatSats(pendingOutSat)}</strong> {t('dashboard.balance.outgoing')}
+                    </span>
                   )}
                 </div>
               </div>
@@ -237,7 +247,7 @@ export function Dashboard({
                 />
               )}
 
-              <div className="balance-actions" role="group" aria-label="Acciones de la wallet">
+              <div className="balance-actions" role="group" aria-label={t('dashboard.actions.aria')}>
                 <Button
                   className="quick-action"
                   type="button"
@@ -246,7 +256,7 @@ export function Dashboard({
                   onClick={() => openAction('send')}
                 >
                   <span className="quick-action-icon"><ArrowUpIcon /></span>
-                  <strong>Enviar</strong>
+                  <strong>{t('dashboard.actions.send')}</strong>
                 </Button>
                 <Button
                   className="quick-action"
@@ -256,7 +266,7 @@ export function Dashboard({
                   onClick={() => openAction('receive')}
                 >
                   <span className="quick-action-icon"><ArrowDownIcon /></span>
-                  <strong>Recibir</strong>
+                  <strong>{t('dashboard.actions.receive')}</strong>
                 </Button>
                 <Button
                   className="quick-action"
@@ -266,27 +276,27 @@ export function Dashboard({
                   onClick={() => openAction('deposit')}
                 >
                   <span className="quick-action-icon"><LinkIcon /></span>
-                  <strong>Fondear</strong>
+                  <strong>{t('dashboard.actions.deposit')}</strong>
                 </Button>
               </div>
 
               <Separator className="dashboard-separator" />
 
-              <dl className="balance-breakdown" aria-label="Desglose del saldo">
+              <dl className="balance-breakdown" aria-label={t('dashboard.breakdown.aria')}>
                 <div className="balance-metric">
-                  <dt>Disponible</dt>
+                  <dt>{t('dashboard.breakdown.available')}</dt>
                   <dd>{formattedConfirmedSat} <small>sats</small></dd>
                 </div>
                 <div className="balance-metric">
-                  <dt>Entrando</dt>
+                  <dt>{t('dashboard.breakdown.incoming')}</dt>
                   <dd>+{formatSats(pendingInSat)} <small>sats</small></dd>
                 </div>
                 <div className="balance-metric">
-                  <dt>Saliendo</dt>
+                  <dt>{t('dashboard.breakdown.outgoing')}</dt>
                   <dd>−{formatSats(pendingOutSat)} <small>sats</small></dd>
                 </div>
                 <div className="balance-metric network-metric">
-                  <dt>Red · bloque</dt>
+                  <dt>{t('dashboard.breakdown.network')}</dt>
                   <dd>Signet <small>#{formatSats(blockHeight)}</small></dd>
                 </div>
               </dl>
@@ -304,23 +314,23 @@ export function Dashboard({
             />
           </TabsContent>
 
-          <TabsList className="dashboard-nav" aria-label="Secciones de la wallet">
+          <TabsList className="dashboard-nav" aria-label={t('dashboard.nav.aria')}>
             <TabsTrigger
               className="dashboard-nav-item"
               value="home"
               onClick={() => selectView('home')}
             >
               <HomeIcon />
-              <span>Inicio</span>
+              <span>{t('dashboard.nav.home')}</span>
             </TabsTrigger>
             <TabsTrigger
               className="dashboard-nav-item"
               value="activity"
-              aria-label={`Movimientos, ${activity.length}`}
+              aria-label={t('dashboard.nav.activity.aria', { count: activity.length })}
               onClick={() => selectView('activity')}
             >
               <ActivityIcon />
-              <span>Movimientos</span>
+              <span>{t('dashboard.nav.activity')}</span>
               {activity.length > 0 && (
                 <span className="dashboard-nav-count" aria-hidden="true">
                   {activity.length}
@@ -361,15 +371,16 @@ function MovementsView({
   onOpenDetail,
   onOpenHistory,
 }: MovementsViewProps) {
+  const { plural, t } = useI18n();
   const visibleEntries = recentActivity(entries);
-  const countLabel = entries.length === 1 ? '1 movimiento' : `${entries.length} movimientos`;
+  const countLabel = plural('movements.count', entries.length);
 
   return (
     <section className="activity-section activity-page" aria-labelledby="activity-heading">
       <div className="section-title">
         <div>
-          <span className="step-label">Movimientos</span>
-          <h2 id="activity-heading">Actividad reciente</h2>
+          <span className="step-label">{t('movements.step')}</span>
+          <h2 id="activity-heading">{t('movements.title')}</h2>
         </div>
         <Badge className="activity-count" variant="outline" aria-label={countLabel}>
           {entries.length}
@@ -380,18 +391,15 @@ function MovementsView({
         {entries.length === 0 ? (
           <div className="empty-activity">
             <span className="empty-activity-icon"><ArrowDownIcon /></span>
-            <h3>Probá Rayito con sats de prueba</h3>
-            <p>
-              Signet es una red de prueba: sus sats no tienen valor real.
-              Generá una dirección y pedilos gratis en un faucet.
-            </p>
+            <h3>{t('movements.empty.title')}</h3>
+            <p>{t('movements.empty.copy')}</p>
             <Button
               className="empty-activity-action"
               type="button"
               variant="ghost"
               onClick={onDeposit}
             >
-              Conseguir sats de prueba
+              {t('movements.empty.action')}
               <ChevronRightIcon />
             </Button>
           </div>
@@ -408,7 +416,7 @@ function MovementsView({
             variant="ghost"
             onClick={onOpenHistory}
           >
-            Ver historial completo <ChevronRightIcon />
+            {t('movements.seeAll')} <ChevronRightIcon />
           </Button>
         </div>
       )}
@@ -423,6 +431,7 @@ function ActionDialog({
   onClose,
   onInvoiceCreated,
 }: ActionDialogProps) {
+  const { t } = useI18n();
   let form;
   switch (action) {
     case 'receive':
@@ -442,18 +451,19 @@ function ActionDialog({
   }
 
   return (
-    <Dialog ariaLabel={ACTION_DIALOG_LABELS[action]} onClose={onClose}>
+    <Dialog ariaLabel={t(ACTION_DIALOG_LABEL_KEYS[action])} onClose={onClose}>
       {form}
     </Dialog>
   );
 }
 
 function PaymentToast({ notice, onDismiss }: PaymentToastProps) {
+  const { formatSats, t } = useI18n();
   const received = notice.type === 'received';
-  const title = received ? 'Pago recibido' : 'Pago confirmado';
-  const detail = received
-    ? `${formatSats(notice.amountSat)} sats ya están disponibles.`
-    : `${formatSats(notice.amountSat)} sats fueron enviados correctamente.`;
+  const title = t(received ? 'toast.received.title' : 'toast.sent.title');
+  const detail = t(received ? 'toast.received.detail' : 'toast.sent.detail', {
+    sats: formatSats(notice.amountSat),
+  });
 
   return createPortal(
     <aside className="payment-toast" role="status" aria-live="polite">
@@ -465,7 +475,7 @@ function PaymentToast({ notice, onDismiss }: PaymentToastProps) {
         variant="ghost"
         size="icon"
         onClick={onDismiss}
-        aria-label="Cerrar alerta"
+        aria-label={t('toast.dismiss')}
       >
         ×
       </Button>
@@ -482,6 +492,7 @@ function ReceivedFundsWash() {
 }
 
 function ReceiveForm({ onInvoiceCreated }: ReceiveFormProps) {
+  const { t } = useI18n();
   const [amount, setAmount] = useState('');
   const [memo, setMemo] = useState('');
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -512,8 +523,8 @@ function ReceiveForm({ onInvoiceCreated }: ReceiveFormProps) {
 
   return (
     <div className={`receive-view${receiveData ? ' invoice-ready' : ''}`}>
-      <span className="step-label">Lightning</span>
-      <h2>Recibir sats</h2>
+      <span className="step-label">{t('receive.step')}</span>
+      <h2>{t('receive.title')}</h2>
       {receiveData ? (
         <LightningInvoiceResult
           amountSat={Math.abs(receiveData.entry.amountSat)}
@@ -522,33 +533,35 @@ function ReceiveForm({ onInvoiceCreated }: ReceiveFormProps) {
       ) : (
         <form onSubmit={(event) => void submit(event)}>
           <label className="field">
-            <span>Monto en sats</span>
+            <span>{t('receive.field.amount')}</span>
             <Input
               inputMode="numeric"
               maxLength={16}
               value={amount}
               onChange={(event) => setAmount(event.target.value.replace(/\D/g, ''))}
-              placeholder="1.000"
+              placeholder={t('receive.field.amount.placeholder')}
               disabled={receivePending}
             />
           </label>
           <label className="field">
-            <span>Concepto (opcional)</span>
+            <span>{t('receive.field.memo')}</span>
             <Input
               value={memo}
               onChange={(event) => setMemo(event.target.value)}
-              placeholder="Café, cena, regalo…"
+              placeholder={t('receive.field.memo.placeholder')}
               disabled={receivePending}
             />
           </label>
-          {amount && !amountResult.valid && <FormError message={amountResult.error} />}
+          {amount && !amountResult.valid && <FormError message={t(amountResult.error)} />}
           {receiveError && <FormError message={receiveError.message} />}
           <Button
             className="primary-button"
             type="submit"
             disabled={!amountResult.valid || receivePending}
           >
-            {receivePending ? `Generando · ${elapsedSeconds}s` : 'Crear factura'}
+            {receivePending
+              ? t('receive.submit.pending', { seconds: elapsedSeconds })
+              : t('receive.submit')}
             <ArrowDownIcon />
           </Button>
           {receivePending && (
@@ -558,14 +571,14 @@ function ReceiveForm({ onInvoiceCreated }: ReceiveFormProps) {
               aria-live="polite"
             >
               <div className="receive-progress-copy">
-                <AlertTitle>{progress.title}</AlertTitle>
-                <AlertDescription>{progress.detail}</AlertDescription>
+                <AlertTitle>{t(progress.titleKey)}</AlertTitle>
+                <AlertDescription>{t(progress.detailKey)}</AlertDescription>
                 <time>{elapsedSeconds}s</time>
               </div>
               <Progress
                 className="receive-progress-bar"
                 value={RECEIVE_PROGRESS_PERCENT[progress.stage]}
-                aria-label="Progreso de generación de la factura"
+                aria-label={t('receive.progress.aria')}
               />
             </Alert>
           )}
@@ -582,6 +595,7 @@ function DepositForm({
   readonly controller: UseWalletDepositResult;
   readonly entry: Entry | null;
 }) {
+  const { t } = useI18n();
   const {
     deposit,
     depositPending,
@@ -595,12 +609,12 @@ function DepositForm({
 
   return (
     <div className="deposit-view">
-      <span className="step-label">Bitcoin on-chain · Signet</span>
-      <h2>Fondear tu wallet</h2>
-      <p>Rayito usa Signet, una red de prueba de Bitcoin. Estos sats no tienen valor real y no sirven en mainnet.</p>
+      <span className="step-label">{t('deposit.step')}</span>
+      <h2>{t('deposit.title')}</h2>
+      <p>{t('deposit.copy')}</p>
       {depositData ? (
         <>
-          <ResultBox label="Dirección Signet" value={depositData.address} />
+          <ResultBox label={t('deposit.address.label')} value={depositData.address} />
           {entry && <OnchainDepositStatus address={depositData.address} entry={entry} />}
           {canStartAnotherDeposit && (
             <Button
@@ -610,7 +624,7 @@ function DepositForm({
               onClick={() => void requestDeposit()}
               disabled={depositPending}
             >
-              {depositPending ? 'Generando…' : 'Generar otra dirección'}
+              {t(depositPending ? 'deposit.generate.pending' : 'deposit.generate.another')}
               <LinkIcon />
             </Button>
           )}
@@ -618,7 +632,7 @@ function DepositForm({
         </>
       ) : (
         <>
-          <p className="deposit-hint">Generá una dirección para pedir sats de prueba. Cuando se confirme el depósito, el saldo entra a Ark y queda listo para usar.</p>
+          <p className="deposit-hint">{t('deposit.hint')}</p>
           {depositError && <FormError message={depositError.message} />}
           <Button
             className="primary-button"
@@ -626,7 +640,7 @@ function DepositForm({
             onClick={() => void requestDeposit()}
             disabled={depositPending}
           >
-            {depositPending ? 'Generando…' : 'Generar dirección Signet'}
+            {t(depositPending ? 'deposit.generate.pending' : 'deposit.generate')}
             <LinkIcon />
           </Button>
         </>
@@ -636,6 +650,7 @@ function DepositForm({
 }
 
 function SendForm() {
+  const { formatSats, t } = useI18n();
   const [destination, setDestination] = useState('');
   const [amount, setAmount] = useState('');
   const [quote, setQuote] = useState<PrepareSendResult | null>(null);
@@ -669,13 +684,12 @@ function SendForm() {
   if (sendData) {
     return (
       <div className="send-success">
-        <span className="step-label">Listo</span>
-        <h2>Pago enviado</h2>
+        <span className="step-label">{t('send.success.step')}</span>
+        <h2>{t('send.success.title')}</h2>
         <Alert role="status" aria-live="polite">
-          <AlertTitle>Envío confirmado</AlertTitle>
+          <AlertTitle>{t('send.success.alert')}</AlertTitle>
           <AlertDescription>
-            Se enviaron {formatSats(sendData.actualAmountSat)} sats.
-            Podés seguir el estado en la actividad.
+            {t('send.success.detail', { sats: formatSats(sendData.actualAmountSat) })}
           </AlertDescription>
         </Alert>
       </div>
@@ -683,31 +697,31 @@ function SendForm() {
   }
 
   const invalidAmount = !isLightning && !amountResult.valid;
-  let heading = '¿A dónde enviamos?';
-  if (scannerOpen) heading = 'Pagar con QR';
-  if (quote) heading = 'Revisá el pago';
+  let heading = t('send.heading.destination');
+  if (scannerOpen) heading = t('send.heading.scan');
+  if (quote) heading = t('send.heading.review');
 
   return (
     <div className="send-view">
-      <span className="step-label">Enviar</span>
+      <span className="step-label">{t('send.step')}</span>
       <h2>{heading}</h2>
       {quote && (
         <div className="quote">
           <dl className="quote-summary">
             <div>
-              <dt>Monto</dt>
+              <dt>{t('send.quote.amount')}</dt>
               <dd>{formatSats(quote.amountSat)} sats</dd>
             </div>
             <div>
-              <dt>Comisión estimada</dt>
+              <dt>{t('send.quote.fee')}</dt>
               <dd>
                 {quote.feeKnown
                   ? `${formatSats(quote.expectedFeeSat)} sats`
-                  : 'A confirmar'}
+                  : t('send.quote.fee.unknown')}
               </dd>
             </div>
             <div>
-              <dt>Vía</dt>
+              <dt>{t('send.quote.rail')}</dt>
               <dd>{quote.rail}</dd>
             </div>
           </dl>
@@ -724,7 +738,7 @@ function SendForm() {
               onClick={() => void confirmSend()}
               disabled={sendPending}
             >
-              {sendPending ? 'Enviando…' : 'Confirmar envío'}
+              {t(sendPending ? 'send.confirm.pending' : 'send.confirm')}
               <ArrowUpIcon />
             </Button>
             <Button
@@ -733,7 +747,7 @@ function SendForm() {
               variant="ghost"
               onClick={() => setQuote(null)}
             >
-              Editar
+              {t('send.edit')}
             </Button>
           </div>
         </div>
@@ -747,12 +761,12 @@ function SendForm() {
       {!quote && !scannerOpen && (
         <form onSubmit={(event) => void preview(event)}>
           <label className="field">
-            <span>Factura Lightning o dirección</span>
+            <span>{t('send.field.destination')}</span>
             <Textarea
               rows={3}
               value={destination}
               onChange={(event) => setDestination(event.target.value)}
-              placeholder="lnbc… o tb1…"
+              placeholder={t('send.field.destination.placeholder')}
             />
           </label>
           <Button
@@ -762,11 +776,11 @@ function SendForm() {
             onClick={() => setScannerOpen(true)}
           >
             <CameraIcon />
-            Escanear QR con la cámara
+            {t('send.scan')}
           </Button>
           {!isLightning && (
             <label className="field">
-              <span>Monto en sats</span>
+              <span>{t('send.field.amount')}</span>
               <Input
                 inputMode="numeric"
                 maxLength={16}
@@ -775,14 +789,16 @@ function SendForm() {
               />
             </label>
           )}
-          {amount && invalidAmount && <FormError message={amountResult.error} />}
+          {amount && invalidAmount && !amountResult.valid && (
+            <FormError message={t(amountResult.error)} />
+          )}
           {prepareError && <FormError message={prepareError.message} />}
           <Button
             className="primary-button"
             type="submit"
             disabled={!destination.trim() || invalidAmount || preparePending}
           >
-            {preparePending ? 'Cotizando…' : 'Revisar pago'}
+            {t(preparePending ? 'send.submit.pending' : 'send.submit')}
             <ArrowUpIcon />
           </Button>
         </form>
@@ -792,6 +808,7 @@ function SendForm() {
 }
 
 function ResultBox({ label, value }: { label: string; value: string }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     await copyText(value);
@@ -804,7 +821,7 @@ function ResultBox({ label, value }: { label: string; value: string }) {
       <span>{label}</span>
       <code>{value}</code>
       <Button type="button" variant="outline" onClick={() => void copy()}>
-        <CopyIcon /> {copied ? 'Copiado' : 'Copiar'}
+        <CopyIcon /> {t(copied ? 'copy.copied' : 'copy.copy')}
       </Button>
     </div>
   );
@@ -819,6 +836,7 @@ function FormError({ message }: { readonly message: string }) {
 }
 
 function RecoveryBanner() {
+  const { t } = useI18n();
   const { recovery, acknowledge } = useWalletRecovery();
 
   useEffect(() => {
@@ -831,7 +849,7 @@ function RecoveryBanner() {
         recoveredVTXOs,
         recoveryRan,
       } = recovery.result;
-      console.info('[Rayito] Recuperación finalizada', {
+      console.info('[Rayito] Recovery finished', {
         recoveredBoardingAddresses,
         recoveredBoardingUTXOs,
         recoveredOORReceiveScripts,
@@ -842,7 +860,7 @@ function RecoveryBanner() {
     }
 
     if (recovery.status === 'failed') {
-      console.error('[Rayito] La recuperación falló', recovery.error);
+      console.error('[Rayito] Recovery failed', recovery.error);
     }
   }, [recovery]);
 
@@ -850,21 +868,19 @@ function RecoveryBanner() {
   if (recovery.status === 'restoring') {
     return (
       <Alert className="recovery-banner" role="status" aria-live="polite">
-        <AlertTitle>Recuperando la wallet</AlertTitle>
-        <AlertDescription>
-          Estamos reconstruyendo tu saldo e historial. No cierres ni recargues esta pestaña.
-        </AlertDescription>
+        <AlertTitle>{t('recovery.restoring.title')}</AlertTitle>
+        <AlertDescription>{t('recovery.restoring.detail')}</AlertDescription>
       </Alert>
     );
   }
   if (recovery.status === 'done') {
     return (
       <Alert className="recovery-banner" role="status" aria-live="polite">
-        <AlertTitle>Recuperación terminada</AlertTitle>
-        <AlertDescription>{recoveryResultMessage(recovery.result)}</AlertDescription>
+        <AlertTitle>{t('recovery.done.title')}</AlertTitle>
+        <AlertDescription>{t(...recoveryResultMessage(recovery.result))}</AlertDescription>
         <AlertAction>
           <Button type="button" variant="ghost" size="sm" onClick={acknowledge}>
-            Cerrar
+            {t('recovery.dismiss')}
           </Button>
         </AlertAction>
       </Alert>
@@ -873,27 +889,30 @@ function RecoveryBanner() {
   return (
     <Alert className="recovery-banner error" variant="destructive">
       <AlertDescription>
-        No pudimos completar la recuperación: {recovery.error.message}
+        {t('recovery.failed', { message: recovery.error.message })}
       </AlertDescription>
       <AlertAction>
         <Button type="button" variant="ghost" size="sm" onClick={acknowledge}>
-          Cerrar
+          {t('recovery.dismiss')}
         </Button>
       </AlertAction>
     </Alert>
   );
 }
 
-function recoveryResultMessage(result: CreateWalletResult): string {
+/** Returns the `t()` arguments describing how the recovery scan ended. */
+function recoveryResultMessage(
+  result: CreateWalletResult,
+): [MessageKey, Record<string, number>?] {
   const recoveredItems = result.recoveredVTXOs
     + result.recoveredBoardingUTXOs
     + result.recoveredOORRecipientEvents;
 
-  if (!result.recoveryRan) {
-    return 'La wallet abrió, pero el SDK no ejecutó el escaneo de recuperación.';
-  }
-  if (recoveredItems === 0) {
-    return 'El escaneo terminó, pero no encontró fondos ni movimientos recuperables.';
-  }
-  return `Recuperación completa: ${result.recoveredVTXOs} VTXOs, ${result.recoveredBoardingUTXOs} depósitos on-chain y ${result.recoveredOORRecipientEvents} recepciones encontradas.`;
+  if (!result.recoveryRan) return ['recovery.done.notRun'];
+  if (recoveredItems === 0) return ['recovery.done.empty'];
+  return ['recovery.done.summary', {
+    vtxos: result.recoveredVTXOs,
+    deposits: result.recoveredBoardingUTXOs,
+    receives: result.recoveredOORRecipientEvents,
+  }];
 }

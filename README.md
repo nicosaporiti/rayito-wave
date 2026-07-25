@@ -4,6 +4,7 @@ Wallet web autocustodial de Bitcoin construida sobre [Wavelength SDK](https://wa
 
 ## Qué incluye
 
+- Interfaz completa en español e inglés, con detección del idioma del navegador.
 - Creación de una wallet protegida por contraseña.
 - Respaldo obligatorio y verificación de la frase de 24 palabras.
 - Desbloqueo local en visitas posteriores.
@@ -28,6 +29,22 @@ npm test
 npm run lint
 npm run build
 ```
+
+## Idiomas
+
+La app se sirve en español e inglés. En la primera visita se elige el idioma a
+partir de `navigator.languages` (cualquier variante `es-*` abre en español; el
+resto, en inglés) y el selector `ES/EN` del encabezado guarda la preferencia en
+`localStorage` bajo `rayito.locale`.
+
+Los textos viven en `src/i18n/messages.ts`. El diccionario español define el
+espacio de claves y el inglés se declara como `Record<MessageKey, string>`, así
+que una traducción faltante rompe la compilación. Los módulos de `src/lib/`
+devuelven claves (`MessageKey`) en lugar de texto y la traducción ocurre al
+renderizar, mediante `useI18n()`.
+
+Para agregar un idioma: sumá el tag a `LOCALES`, agregá el diccionario a
+`messages` y el formato numérico/de fecha en `INTL_LOCALE` (`src/lib/format.ts`).
 
 ## Modelo de seguridad
 

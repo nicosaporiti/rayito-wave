@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { IScannerControls } from '@zxing/browser';
 import { CameraIcon, ScanIcon } from './Icons';
+import { useI18n } from '../i18n/useI18n';
+import type { MessageKey } from '../i18n/messages';
 import { parseScannedInvoice } from '../lib/scanned-invoice';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
@@ -13,39 +15,37 @@ type QrInvoiceScannerProps = {
 type ScannerStatus =
   | { readonly type: 'starting' }
   | { readonly type: 'scanning' }
-  | { readonly type: 'error'; readonly message: string };
+  | { readonly type: 'error'; readonly messageKey: MessageKey };
 
-function cameraErrorMessage(error: unknown): string {
+function cameraErrorKey(error: unknown): MessageKey {
   if (error instanceof DOMException) {
     if (error.name === 'NotAllowedError' || error.name === 'SecurityError') {
-      return 'Necesitamos permiso para usar la cámara. Habilitalo en el navegador e intentá de nuevo.';
+      return 'scanner.error.permission';
     }
     if (error.name === 'NotFoundError' || error.name === 'OverconstrainedError') {
-      return 'No encontramos una cámara disponible en este dispositivo.';
+      return 'scanner.error.notFound';
     }
     if (error.name === 'NotReadableError') {
-      return 'La cámara está siendo usada por otra aplicación.';
+      return 'scanner.error.busy';
     }
   }
 
-  return 'No pudimos iniciar la cámara. Podés pegar la factura manualmente.';
+  return 'scanner.error.generic';
 }
 
 export function QrInvoiceScanner({ onCancel, onScan }: QrInvoiceScannerProps) {
+  const { t } = useI18n();
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
   const [status, setStatus] = useState<ScannerStatus>({ type: 'starting' });
-  const [scanError, setScanError] = useState<string | null>(null);
+  const [scanErrorKey, setScanErrorKey] = useState<MessageKey | null>(null);
 
   useEffect(() => {
     const video = videoRef.current;
     let active = true;
 
     if (!video || !navigator.mediaDevices?.getUserMedia) {
-      setStatus({
-        type: 'error',
-        message: 'Este navegador no permite escanear con la cámara. Podés pegar la factura manualmente.',
-      });
+      setStatus({ type: 'error', messageKey: 'scanner.error.unsupported' });
       return undefined;
     }
 
@@ -70,7 +70,7 @@ export function QrInvoiceScanner({ onCancel, onScan }: QrInvoiceScannerProps) {
 
             const parsed = parseScannedInvoice(result.getText());
             if (!parsed.valid) {
-              setScanError(parsed.error);
+              setScanErrorKey(parsed.error);
               return;
             }
 
@@ -87,7 +87,7 @@ export function QrInvoiceScanner({ onCancel, onScan }: QrInvoiceScannerProps) {
           controls.stop();
         }
       } catch (error) {
-        if (active) setStatus({ type: 'error', message: cameraErrorMessage(error) });
+        if (active) setStatus({ type: 'error', messageKey: cameraErrorKey(error) });
       }
     };
 
@@ -107,16 +107,16 @@ export function QrInvoiceScanner({ onCancel, onScan }: QrInvoiceScannerProps) {
   return (
     <section className="qr-scanner" aria-labelledby="qr-scanner-title">
       <div className="qr-scanner-heading">
-        <span className="step-label">Cámara</span>
-        <h3 id="qr-scanner-title">Escaneá la invoice</h3>
-        <p>Apuntá al código QR. La lectura es local y la imagen no sale del dispositivo.</p>
+        <span className="step-label">{t('scanner.step')}</span>
+        <h3 id="qr-scanner-title">{t('scanner.title')}</h3>
+        <p>{t('scanner.copy')}</p>
       </div>
 
       <div className="qr-camera">
         <video
           ref={videoRef}
           className="qr-camera-video"
-          aria-label="Vista de la cámara para escanear QR"
+          aria-label={t('scanner.video.aria')}
           autoPlay
           muted
           playsInline
@@ -128,21 +128,21 @@ export function QrInvoiceScanner({ onCancel, onScan }: QrInvoiceScannerProps) {
         {status.type === 'starting' && (
           <span className="qr-camera-status" role="status">
             <CameraIcon />
-            Iniciando cámara…
+            {t('scanner.starting')}
           </span>
         )}
       </div>
 
       {status.type === 'scanning' && (
         <p className="qr-scanner-live" role="status">
-          <ScanIcon /> Buscando un QR Lightning…
+          <ScanIcon /> {t('scanner.scanning')}
         </p>
       )}
-      {status.type === 'error' && <ScannerError message={status.message} />}
-      {scanError && status.type !== 'error' && <ScannerError message={scanError} />}
+      {status.type === 'error' && <ScannerError message={t(status.messageKey)} />}
+      {scanErrorKey && status.type !== 'error' && <ScannerError message={t(scanErrorKey)} />}
 
       <Button className="text-button qr-scanner-cancel" type="button" variant="ghost" onClick={onCancel}>
-        Ingresar factura manualmente
+        {t('scanner.cancel')}
       </Button>
     </section>
   );

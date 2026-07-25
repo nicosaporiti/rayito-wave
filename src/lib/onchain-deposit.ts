@@ -1,4 +1,5 @@
 import type { Entry } from '@lightninglabs/wavelength-react';
+import type { MessageKey } from '../i18n/messages';
 
 export const DEPOSIT_CONFIRMATION_TARGET = 1;
 
@@ -17,22 +18,22 @@ export type DepositMonitorState =
   | {
       readonly stage: 'waiting';
       readonly progress: 8;
-      readonly title: 'Esperando fondos';
-      readonly detail: 'Todavía no aparece en la red';
+      readonly titleKey: 'depositStatus.waiting.title';
+      readonly detailKey: 'depositStatus.waiting.detail';
     }
   | {
       readonly stage: 'mempool';
       readonly progress: 46;
-      readonly title: 'Fondos ingresando';
-      readonly detail: '0/1 confirmación · falta 1';
+      readonly titleKey: 'depositStatus.mempool.title';
+      readonly detailKey: 'depositStatus.mempool.detail';
       readonly amountSat: number;
       readonly txid: string;
     }
   | {
       readonly stage: 'boarding';
       readonly progress: 78;
-      readonly title: 'Confirmado en Bitcoin';
-      readonly detail: 'Ingresando a Ark';
+      readonly titleKey: 'depositStatus.boarding.title';
+      readonly detailKey: 'depositStatus.boarding.detail';
       readonly amountSat: number;
       readonly confirmations: number;
       readonly txid: string;
@@ -40,17 +41,21 @@ export type DepositMonitorState =
   | {
       readonly stage: 'complete';
       readonly progress: 100;
-      readonly title: 'Fondos disponibles';
-      readonly detail: 'Listos para usar';
+      readonly titleKey: 'depositStatus.complete.title';
+      readonly detailKey: 'depositStatus.complete.detail';
       readonly amountSat: number;
       readonly txid: string;
     }
   | {
       readonly stage: 'failed';
       readonly progress: 100;
-      readonly title: 'No se pudo acreditar';
-      readonly detail: string;
+      readonly titleKey: 'depositStatus.failed.title';
+      readonly detailKey: 'depositStatus.failed.detail';
+      /** SDK-provided reason shown instead of `detailKey` when present. */
+      readonly failureReason: string;
     };
+
+export type DepositMonitorTitleKey = Extract<MessageKey, `depositStatus.${string}.title`>;
 
 type EsploraTransaction = {
   readonly txid: string;
@@ -105,7 +110,7 @@ function parseTransaction(value: unknown): EsploraTransaction | null {
 }
 
 export function parseEsploraDeposit(raw: unknown, address: string): EsploraDeposit | null {
-  if (!Array.isArray(raw)) throw new Error('Esplora devolvió una lista de transacciones inválida.');
+  if (!Array.isArray(raw)) throw new Error('Esplora returned an invalid transaction list.');
 
   const transactions = raw.map(parseTransaction).filter((tx) => tx !== null);
   const fundingTransaction = transactions.find((tx) => (
@@ -125,7 +130,7 @@ export function parseEsploraDeposit(raw: unknown, address: string): EsploraDepos
 export function parseTipHeight(raw: unknown): number {
   const value = typeof raw === 'number' ? raw : Number(raw);
   if (!Number.isSafeInteger(value) || value < 0) {
-    throw new Error('Esplora devolvió una altura de bloque inválida.');
+    throw new Error('Esplora returned an invalid block height.');
   }
   return value;
 }
@@ -157,8 +162,9 @@ export function depositMonitorState(
     return {
       stage: 'failed',
       progress: 100,
-      title: 'No se pudo acreditar',
-      detail: entry.failureReason || 'Revisá el movimiento para ver el detalle',
+      titleKey: 'depositStatus.failed.title',
+      detailKey: 'depositStatus.failed.detail',
+      failureReason: entry.failureReason,
     };
   }
 
@@ -169,8 +175,8 @@ export function depositMonitorState(
     return {
       stage: 'complete',
       progress: 100,
-      title: 'Fondos disponibles',
-      detail: 'Listos para usar',
+      titleKey: 'depositStatus.complete.title',
+      detailKey: 'depositStatus.complete.detail',
       amountSat,
       txid,
     };
@@ -184,8 +190,8 @@ export function depositMonitorState(
     return {
       stage: 'boarding',
       progress: 78,
-      title: 'Confirmado en Bitcoin',
-      detail: 'Ingresando a Ark',
+      titleKey: 'depositStatus.boarding.title',
+      detailKey: 'depositStatus.boarding.detail',
       amountSat,
       confirmations,
       txid,
@@ -201,8 +207,8 @@ export function depositMonitorState(
     return {
       stage: 'mempool',
       progress: 46,
-      title: 'Fondos ingresando',
-      detail: '0/1 confirmación · falta 1',
+      titleKey: 'depositStatus.mempool.title',
+      detailKey: 'depositStatus.mempool.detail',
       amountSat,
       txid,
     };
@@ -211,7 +217,7 @@ export function depositMonitorState(
   return {
     stage: 'waiting',
     progress: 8,
-    title: 'Esperando fondos',
-    detail: 'Todavía no aparece en la red',
+    titleKey: 'depositStatus.waiting.title',
+    detailKey: 'depositStatus.waiting.detail',
   };
 }

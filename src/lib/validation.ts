@@ -1,6 +1,8 @@
-export function validatePassword(password: string): string | null {
-  if (password.length < 10) return 'Usá al menos 10 caracteres.';
-  if (!/[a-zA-Z]/.test(password) || !/\d/.test(password)) return 'Combiná letras y números.';
+import type { MessageKey } from '../i18n/messages';
+
+export function validatePassword(password: string): MessageKey | null {
+  if (password.length < 10) return 'validation.password.tooShort';
+  if (!/[a-zA-Z]/.test(password) || !/\d/.test(password)) return 'validation.password.needsMix';
   return null;
 }
 
@@ -12,17 +14,17 @@ export const MAX_BITCOIN_AMOUNT_SAT = 2_100_000_000_000_000;
 
 export type SatoshiAmountResult =
   | { readonly valid: true; readonly amountSat: number }
-  | { readonly valid: false; readonly error: string };
+  | { readonly valid: false; readonly error: MessageKey };
 
 export function parseSatoshiAmount(value: string): SatoshiAmountResult {
   if (!/^[1-9]\d*$/.test(value)) {
-    return { valid: false, error: 'Ingresá un monto entero mayor que cero.' };
+    return { valid: false, error: 'validation.amount.notPositiveInteger' };
   }
 
   if (value.length > String(MAX_BITCOIN_AMOUNT_SAT).length) {
     return {
       valid: false,
-      error: 'El monto supera el máximo posible de Bitcoin.',
+      error: 'validation.amount.aboveMaximum',
     };
   }
 
@@ -30,7 +32,7 @@ export function parseSatoshiAmount(value: string): SatoshiAmountResult {
   if (amount > BigInt(MAX_BITCOIN_AMOUNT_SAT)) {
     return {
       valid: false,
-      error: 'El monto supera el máximo posible de Bitcoin.',
+      error: 'validation.amount.aboveMaximum',
     };
   }
 

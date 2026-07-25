@@ -24,14 +24,14 @@ describe('parseScannedInvoice', () => {
   ])('rejects a non-BOLT11 ln payload: %s', (payload) => {
     expect(parseScannedInvoice(payload)).toEqual({
       valid: false,
-      error: 'Ese QR no contiene una factura Lightning.',
+      error: 'scanner.error.notAnInvoice',
     });
   });
 
   it('rejects a QR without a Lightning invoice', () => {
     expect(parseScannedInvoice('bitcoin:tb1qrayito?amount=0.00001')).toEqual({
       valid: false,
-      error: 'Ese QR no contiene una factura Lightning.',
+      error: 'scanner.error.notAnInvoice',
     });
   });
 });

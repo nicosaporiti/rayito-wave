@@ -1,7 +1,18 @@
 /** @vitest-environment jsdom */
 
 import '@testing-library/jest-dom/vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render as renderUnpinned,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import { render } from '../test/render';
+import { I18nProvider } from '../i18n/I18nProvider';
+import { LanguageSwitch } from './LanguageSwitch';
 import type { DepositResult, Entry, ReceiveResult } from '@lightninglabs/wavelength-react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VALID_BOLT11_INVOICE, VALID_LNURL } from '../test/fixtures';
@@ -331,7 +342,7 @@ describe('Dashboard receive flow', () => {
     const view = render(<Dashboard />);
 
     fireEvent.click(screen.getByRole('tab', { name: /^Movimientos/ }));
-    expect(screen.getByText('Probá Rayito con sats de prueba')).toBeInTheDocument();
+    expect(screen.getByText('Prueba Rayito con sats de prueba')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Conseguir sats de prueba' }));
 
     const requestDialog = screen.getByRole('dialog', { name: 'Fondear wallet' });
@@ -348,10 +359,10 @@ describe('Dashboard receive flow', () => {
     const guideDialog = screen.getByRole('dialog', { name: 'Fondear wallet' });
     expect(within(guideDialog).getByText(depositResult.address)).toBeInTheDocument();
     const steps = within(guideDialog).getByRole('list');
-    expect(steps).toHaveTextContent('Copiá la dirección');
-    expect(steps).toHaveTextContent('Abrí el faucet');
-    expect(steps).toHaveTextContent('Pegá la dirección');
-    expect(steps).toHaveTextContent('Seguí el depósito');
+    expect(steps).toHaveTextContent('Copia la dirección');
+    expect(steps).toHaveTextContent('Abre el faucet');
+    expect(steps).toHaveTextContent('Pega la dirección');
+    expect(steps).toHaveTextContent('Sigue el depósito');
 
     const faucetLink = within(guideDialog).getByRole('link', {
       name: 'Abrir Bitcoin Signet Faucet en una pestaña nueva',
@@ -478,5 +489,40 @@ describe('Dashboard receive flow', () => {
     expect(within(restoredHistory).getByRole('button', {
       name: /^Ver detalles: Envío, Egreso, 200 sats/,
     })).toHaveFocus();
+  });
+
+  it('retranslates a history failure but leaves SDK wording untouched', async () => {
+    wallet.activity = [historyEntry(1, 'receive', 'lightning')];
+    // A response without an `activity` page is the catalogue-backed failure.
+    listActivity.mockImplementation(async () => ({ view: 'activity' }));
+    renderUnpinned(
+      <I18nProvider>
+        <LanguageSwitch />
+        <Dashboard view="activity" />
+      </I18nProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'See full history' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Movement history' });
+    const english = 'Wavelength did not return the requested history.';
+    await waitFor(() => expect(within(dialog).getByText(english)).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Español' }));
+
+    expect(within(dialog).getByText('Wavelength no devolvió el historial solicitado.'))
+      .toBeInTheDocument();
+    expect(within(dialog).queryByText(english)).not.toBeInTheDocument();
+
+    // An SDK message has no catalogue entry, so it must survive verbatim.
+    listActivity.mockImplementation(async () => {
+      throw new Error('rpc deadline exceeded');
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Reintentar' }));
+    await waitFor(() => expect(within(dialog).getByText('rpc deadline exceeded'))
+      .toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'English' }));
+    expect(within(dialog).getByText('rpc deadline exceeded')).toBeInTheDocument();
   });
 });

@@ -1,8 +1,9 @@
 import { decode } from 'light-bolt11-decoder';
+import type { MessageKey } from '../i18n/messages';
 
 export type ScannedInvoiceResult =
   | { readonly valid: true; readonly invoice: string }
-  | { readonly valid: false; readonly error: string };
+  | { readonly valid: false; readonly error: MessageKey };
 
 const LIGHTNING_URI_PREFIX = /^lightning:(?:\/\/)?/i;
 const TIMESTAMP_SECTION_LENGTH = 7;
@@ -74,7 +75,7 @@ function isBolt11Invoice(value: string): boolean {
 export function parseScannedInvoice(payload: string): ScannedInvoiceResult {
   const value = payload.trim();
   if (!value) {
-    return { valid: false, error: 'El QR está vacío.' };
+    return { valid: false, error: 'scanner.error.emptyQr' };
   }
 
   const lightningUriInvoice = value.replace(LIGHTNING_URI_PREFIX, '').trim();
@@ -93,12 +94,12 @@ export function parseScannedInvoice(payload: string): ScannedInvoiceResult {
         return { valid: true, invoice: lightningParameter };
       }
     } catch {
-      return { valid: false, error: 'No pudimos interpretar el contenido del QR.' };
+      return { valid: false, error: 'scanner.error.unreadableQr' };
     }
   }
 
   return {
     valid: false,
-    error: 'Ese QR no contiene una factura Lightning.',
+    error: 'scanner.error.notAnInvoice',
   };
 }

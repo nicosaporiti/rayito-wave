@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react';
+import { useI18n } from '../i18n/useI18n';
 import { LinkIcon } from './Icons';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
@@ -11,30 +12,28 @@ type SignetFaucetGuideProps = {
   readonly address: string;
 };
 
+const FAUCET_STEPS = [
+  { strong: 'faucet.step1.strong', rest: 'faucet.step1.rest' },
+  { strong: 'faucet.step2.strong', rest: 'faucet.step2.rest' },
+  { strong: 'faucet.step3.strong', rest: 'faucet.step3.rest' },
+  { strong: 'faucet.step4.strong', rest: 'faucet.step4.rest' },
+] as const;
+
 export function SignetFaucetGuide({ address }: SignetFaucetGuideProps): ReactElement {
+  const { t } = useI18n();
   const mempoolAddressUrl = `${SIGNET_MEMPOOL_ADDRESS_URL}${encodeURIComponent(address)}`;
 
   return (
     <section className="signet-guide" aria-labelledby="signet-guide-title">
-      <p className="signet-guide-kicker">Siguiente paso</p>
-      <h3 id="signet-guide-title">Cómo cargar sats de prueba</h3>
+      <p className="signet-guide-kicker">{t('faucet.kicker')}</p>
+      <h3 id="signet-guide-title">{t('faucet.title')}</h3>
       <ol>
-        <li>
-          <span aria-hidden="true">1</span>
-          <p><strong>Copiá la dirección</strong> Signet que aparece arriba.</p>
-        </li>
-        <li>
-          <span aria-hidden="true">2</span>
-          <p><strong>Abrí el faucet</strong> en una pestaña nueva.</p>
-        </li>
-        <li>
-          <span aria-hidden="true">3</span>
-          <p><strong>Pegá la dirección</strong>, elegí un monto permitido y completá la verificación.</p>
-        </li>
-        <li>
-          <span aria-hidden="true">4</span>
-          <p><strong>Seguí el depósito</strong> en mempool Signet. Aparece cuando el faucet publica el lote y Rayito lo acredita después de la confirmación.</p>
-        </li>
+        {FAUCET_STEPS.map((step, index) => (
+          <li key={step.strong}>
+            <span aria-hidden="true">{index + 1}</span>
+            <p><strong>{t(step.strong)}</strong>{t(step.rest)}</p>
+          </li>
+        ))}
       </ol>
       <Separator className="signet-guide-separator" />
       <div className="signet-guide-actions">
@@ -43,9 +42,9 @@ export function SignetFaucetGuide({ address }: SignetFaucetGuideProps): ReactEle
             href={SIGNET_FAUCET_URL}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="Abrir Bitcoin Signet Faucet en una pestaña nueva"
+            aria-label={t('faucet.open.aria')}
           >
-            Abrir Bitcoin Signet Faucet
+            {t('faucet.open')}
             <LinkIcon />
           </a>
         </Button>
@@ -54,17 +53,15 @@ export function SignetFaucetGuide({ address }: SignetFaucetGuideProps): ReactEle
             href={mempoolAddressUrl}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="Seguir esta dirección en mempool Signet en una pestaña nueva"
+            aria-label={t('faucet.track.aria')}
           >
-            Seguir en mempool Signet
+            {t('faucet.track')}
             <LinkIcon />
           </a>
         </Button>
       </div>
       <Alert className="signet-guide-note" role="note">
-        <AlertDescription>
-          El faucet es un servicio externo y puede quedarse temporalmente sin fondos o limitar solicitudes.
-        </AlertDescription>
+        <AlertDescription>{t('faucet.note')}</AlertDescription>
       </Alert>
     </section>
   );

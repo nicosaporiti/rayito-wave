@@ -8,8 +8,8 @@ import {
 
 describe('validatePassword', () => {
   it('requires ten characters with letters and numbers', () => {
-    expect(validatePassword('corta1')).toBe('Usá al menos 10 caracteres.');
-    expect(validatePassword('solamentelarga')).toBe('Combiná letras y números.');
+    expect(validatePassword('corta1')).toBe('validation.password.tooShort');
+    expect(validatePassword('solamentelarga')).toBe('validation.password.needsMix');
     expect(validatePassword('segura2026')).toBeNull();
   });
 });

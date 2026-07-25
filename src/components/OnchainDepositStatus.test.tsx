@@ -1,7 +1,8 @@
 /** @vitest-environment jsdom */
 
 import '@testing-library/jest-dom/vitest';
-import { act, cleanup, render } from '@testing-library/react';
+import { act, cleanup } from '@testing-library/react';
+import { render } from '../test/render';
 import type { Entry } from '@lightninglabs/wavelength-react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { OnchainDepositStatus } from './OnchainDepositStatus';

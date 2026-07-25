@@ -8,6 +8,7 @@ import {
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useI18n } from '@/i18n/useI18n';
 
 type DialogProps = {
   readonly ariaLabel: string;
@@ -26,6 +27,7 @@ const FOCUSABLE_SELECTOR = [
 ].join(',');
 
 export function Dialog({ ariaLabel, children, onClose, panelClassName = '' }: DialogProps) {
+  const { t } = useI18n();
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLElement>(null);
@@ -123,7 +125,7 @@ export function Dialog({ ariaLabel, children, onClose, panelClassName = '' }: Di
           variant="ghost"
           size="icon"
           onClick={onClose}
-          aria-label="Cerrar"
+          aria-label={t('dialog.close')}
         >
           <X aria-hidden="true" />
         </Button>

@@ -1,4 +1,5 @@
 import type { Entry } from '@lightninglabs/wavelength-react';
+import type { MessageKey } from '../i18n/messages';
 
 export const RECENT_ACTIVITY_LIMIT = 5;
 
@@ -6,12 +7,15 @@ export type ActivityFilter = 'all' | 'income' | 'expense' | 'onchain' | 'lightni
 export type ActivityRail = 'ark' | 'lightning' | 'onchain' | 'unknown';
 
 export const ACTIVITY_FILTER_OPTIONS = [
-  { label: 'Todos', value: 'all' },
-  { label: 'Ingresos', value: 'income' },
-  { label: 'Egresos', value: 'expense' },
-  { label: 'On-chain', value: 'onchain' },
-  { label: 'Lightning', value: 'lightning' },
-] as const satisfies readonly { readonly label: string; readonly value: ActivityFilter }[];
+  { labelKey: 'activity.filter.all', value: 'all' },
+  { labelKey: 'activity.filter.income', value: 'income' },
+  { labelKey: 'activity.filter.expense', value: 'expense' },
+  { labelKey: 'activity.filter.onchain', value: 'onchain' },
+  { labelKey: 'activity.filter.lightning', value: 'lightning' },
+] as const satisfies readonly {
+  readonly labelKey: MessageKey;
+  readonly value: ActivityFilter;
+}[];
 
 export function isIncomingEntry(entry: Entry): boolean {
   return entry.kind === 'receive' || entry.kind === 'deposit';
@@ -35,12 +39,12 @@ export function activityRail(entry: Entry): ActivityRail {
   return 'unknown';
 }
 
-export function activityRailLabel(rail: ActivityRail): string {
+export function activityRailKey(rail: ActivityRail): MessageKey {
   switch (rail) {
-    case 'ark': return 'Ark';
-    case 'lightning': return 'Lightning';
-    case 'onchain': return 'On-chain';
-    case 'unknown': return 'Sin identificar';
+    case 'ark': return 'rail.ark';
+    case 'lightning': return 'rail.lightning';
+    case 'onchain': return 'rail.onchain';
+    case 'unknown': return 'rail.unknown';
     default: return rail satisfies never;
   }
 }

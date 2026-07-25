@@ -1,7 +1,8 @@
 /** @vitest-environment jsdom */
 
 import '@testing-library/jest-dom/vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { render } from './test/render';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 
@@ -298,7 +299,7 @@ describe('App wallet locking', () => {
     expect(screen.getByText(/No pudimos iniciar uno de los procesos locales/)).toBeInTheDocument();
     expect(screen.getByText(/Puede deberse a un bloqueo del navegador o a que el motor se detuvo/)).toBeInTheDocument();
     expect(screen.getByText(/Worker runtime exited unexpectedly/)).toBeInTheDocument();
-    expect(screen.getByText(/necesitás tus 24 palabras para recuperarla/)).toBeInTheDocument();
+    expect(screen.getByText(/necesitas tus 24 palabras para recuperarla/)).toBeInTheDocument();
     expect(screen.getByText(/No borres los datos del perfil original/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument();
   });

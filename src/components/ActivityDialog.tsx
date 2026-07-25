@@ -10,20 +10,20 @@ import { useWalletList, type Entry } from '@lightninglabs/wavelength-react';
 import {
   ACTIVITY_FILTER_OPTIONS,
   activityRail,
-  activityRailLabel,
+  activityRailKey,
   filterActivity,
   isIncomingEntry,
   mergeActivityEntries,
   type ActivityFilter,
 } from '../lib/activity';
+import { useI18n } from '../i18n/useI18n';
+import type { PendingMessage } from '../i18n/context';
+import type { MessageKey } from '../i18n/messages';
 import {
-  entryFailureLabel,
-  entryKindLabel,
-  entryPhaseLabel,
-  entryStatusLabel,
-  formatDate,
-  formatFullDate,
-  formatSats,
+  entryFailureKey,
+  entryKindKey,
+  entryPhaseKey,
+  entryStatusKey,
 } from '../lib/format';
 import { Dialog } from './Dialog';
 import {
@@ -55,7 +55,25 @@ type HistoryRequestState =
   | { readonly status: 'initial-loading' }
   | { readonly status: 'ready' }
   | { readonly status: 'loading-more' }
-  | { readonly status: 'error'; readonly message: string; readonly retryCursor: string };
+  | {
+      readonly status: 'error';
+      readonly message: PendingMessage;
+      readonly retryCursor: string;
+    };
+
+/** Signals a failure whose copy lives in the catalogue rather than in the SDK. */
+class HistoryError extends Error {
+  constructor(readonly messageKey: MessageKey) {
+    super(messageKey);
+    this.name = 'HistoryError';
+  }
+}
+
+function historyFailureMessage(error: unknown): PendingMessage {
+  if (error instanceof HistoryError) return { key: error.messageKey };
+  if (error instanceof Error) return { text: error.message };
+  return { key: 'activity.error.generic' };
+}
 
 type DetailRowProps = {
   readonly label: string;
@@ -64,12 +82,16 @@ type DetailRowProps = {
 };
 
 export function ActivityRows({ entries, focusEntryId, onSelect }: ActivityRowsProps): ReactElement {
+  const { formatDate, formatSats, t } = useI18n();
+
   return (
     <ul className="activity-list">
       {entries.map((entry) => {
         const incoming = isIncomingEntry(entry);
         const rail = activityRail(entry);
-        const direction = incoming ? 'Ingreso' : 'Egreso';
+        const direction = t(
+          incoming ? 'activity.direction.incoming' : 'activity.direction.outgoing',
+        );
 
         return (
           <li key={entry.id}>
@@ -79,21 +101,28 @@ export function ActivityRows({ entries, focusEntryId, onSelect }: ActivityRowsPr
               variant="ghost"
               autoFocus={entry.id === focusEntryId}
               onClick={() => onSelect(entry.id)}
-              aria-label={`Ver detalles: ${entryKindLabel(entry.kind)}, ${direction}, ${formatSats(Math.abs(entry.amountSat))} sats, ${activityRailLabel(rail)}, ${entryStatusLabel(entry.status)}, ${formatDate(entry.createdAt)}`}
+              aria-label={t('activity.row.aria', {
+                kind: t(entryKindKey(entry.kind)),
+                direction,
+                amount: formatSats(Math.abs(entry.amountSat)),
+                rail: t(activityRailKey(rail)),
+                status: t(entryStatusKey(entry.status)),
+                date: formatDate(entry.createdAt),
+              })}
             >
               <span className={`activity-icon ${incoming ? 'incoming' : ''}`}>
                 {incoming ? <ArrowDownIcon /> : <ArrowUpIcon />}
               </span>
               <span className="activity-copy">
-                <strong>{entryKindLabel(entry.kind)}</strong>
+                <strong>{t(entryKindKey(entry.kind))}</strong>
                 <small>
                   <time dateTime={entry.createdAt}>{formatDate(entry.createdAt)}</time>
-                  <span>{activityRailLabel(rail)}</span>
+                  <span>{t(activityRailKey(rail))}</span>
                   <Badge
                     className={`activity-status ${entry.status}`}
                     variant="outline"
                   >
-                    {entryStatusLabel(entry.status)}
+                    {t(entryStatusKey(entry.status))}
                   </Badge>
                 </small>
               </span>
@@ -110,6 +139,7 @@ export function ActivityRows({ entries, focusEntryId, onSelect }: ActivityRowsPr
 }
 
 export function ActivityDialog({ entries, initialEntryId, onClose }: ActivityDialogProps): ReactElement {
+  const { plural, resolve, t } = useI18n();
   const { list } = useWalletList();
   const [history, setHistory] = useState<readonly Entry[]>(entries);
   const [filter, setFilter] = useState<ActivityFilter>('all');
@@ -133,11 +163,11 @@ export function ActivityDialog({ entries, initialEntryId, onClose }: ActivityDia
         });
         const page = result.activity;
         if (!mounted.current) return;
-        if (!page) throw new Error('Wavelength no devolvió el historial solicitado.');
+        if (!page) throw new HistoryError('activity.error.missingHistory');
 
         setHistory((current) => mergeActivityEntries(current, page.entries));
         if (!page.hasMore) break;
-        if (!page.nextCursor) throw new Error('Wavelength no devolvió el cursor de la página siguiente.');
+        if (!page.nextCursor) throw new HistoryError('activity.error.missingCursor');
 
         cursor = page.nextCursor;
         setRequestState({ status: 'loading-more' });
@@ -147,7 +177,7 @@ export function ActivityDialog({ entries, initialEntryId, onClose }: ActivityDia
       if (!mounted.current) return;
       setRequestState({
         status: 'error',
-        message: error instanceof Error ? error.message : 'No pudimos cargar el historial.',
+        message: historyFailureMessage(error),
         retryCursor: cursor,
       });
     }
@@ -204,7 +234,7 @@ export function ActivityDialog({ entries, initialEntryId, onClose }: ActivityDia
 
   return (
     <Dialog
-      ariaLabel={selectedEntry ? 'Detalle del movimiento' : 'Historial de movimientos'}
+      ariaLabel={t(selectedEntry ? 'activity.dialog.detail' : 'activity.dialog.history')}
       onClose={onClose}
       panelClassName="activity-dialog"
     >
@@ -214,12 +244,12 @@ export function ActivityDialog({ entries, initialEntryId, onClose }: ActivityDia
         <div className="activity-history">
           <div ref={historyHeaderRef} className="activity-history-header">
             <header className="activity-dialog-heading">
-              <span className="step-label">Historial</span>
-              <h2>Todos los movimientos</h2>
-              <p>{history.length} {history.length === 1 ? 'movimiento cargado' : 'movimientos cargados'}</p>
+              <span className="step-label">{t('activity.history.step')}</span>
+              <h2>{t('activity.history.title')}</h2>
+              <p>{plural('activity.history.loaded', history.length)}</p>
             </header>
 
-            <div className="activity-filters" role="group" aria-label="Filtrar movimientos">
+            <div className="activity-filters" role="group" aria-label={t('activity.filters.aria')}>
               {ACTIVITY_FILTER_OPTIONS.map((option) => (
                 <Button
                   key={option.value}
@@ -230,13 +260,13 @@ export function ActivityDialog({ entries, initialEntryId, onClose }: ActivityDia
                   aria-pressed={filter === option.value}
                   onClick={() => setFilter(option.value)}
                 >
-                  {option.label}
+                  {t(option.labelKey)}
                 </Button>
               ))}
             </div>
 
             <p className="activity-result-count" aria-live="polite">
-              {filteredEntries.length} {filteredEntries.length === 1 ? 'resultado' : 'resultados'}
+              {plural('activity.results', filteredEntries.length)}
             </p>
           </div>
 
@@ -249,28 +279,28 @@ export function ActivityDialog({ entries, initialEntryId, onClose }: ActivityDia
           ) : (
             <div className="activity-filter-empty">
               <p>
-                {requestState.status === 'ready'
-                  ? 'No hay movimientos que coincidan con este filtro.'
-                  : 'Buscando coincidencias en el historial…'}
+                {t(requestState.status === 'ready'
+                  ? 'activity.filter.empty'
+                  : 'activity.filter.searching')}
               </p>
             </div>
           )}
 
           {requestState.status === 'initial-loading' && (
             <Alert className="activity-history-message" role="status">
-              <AlertDescription>Cargando el historial completo…</AlertDescription>
+              <AlertDescription>{t('activity.loading.initial')}</AlertDescription>
             </Alert>
           )}
           {requestState.status === 'loading-more' && (
             <Alert className="activity-history-message" role="status">
-              <AlertDescription>Cargando más movimientos…</AlertDescription>
+              <AlertDescription>{t('activity.loading.more')}</AlertDescription>
             </Alert>
           )}
           {requestState.status === 'error' && (
             <Alert className="activity-history-error" variant="destructive">
-              <AlertDescription>{requestState.message}</AlertDescription>
+              <AlertDescription>{resolve(requestState.message)}</AlertDescription>
               <Button type="button" variant="outline" size="sm" onClick={retry}>
-                Reintentar
+                {t('activity.retry')}
               </Button>
             </Alert>
           )}
@@ -281,6 +311,7 @@ export function ActivityDialog({ entries, initialEntryId, onClose }: ActivityDia
 }
 
 function ActivityDetail({ entry, onBack }: { readonly entry: Entry; readonly onBack: () => void }): ReactElement {
+  const { formatFullDate, formatSats, t } = useI18n();
   const incoming = isIncomingEntry(entry);
   const rail = activityRail(entry);
   const requestPaymentHash = entry.request?.paymentHash;
@@ -295,13 +326,13 @@ function ActivityDetail({ entry, onBack }: { readonly entry: Entry; readonly onB
         variant="ghost"
         onClick={onBack}
       >
-        <ArrowLeftIcon /> Volver al historial
+        <ArrowLeftIcon /> {t('activity.back')}
       </Button>
 
       <header className="activity-detail-heading">
         <div>
-          <span className="step-label">Detalle del movimiento</span>
-          <h2>{entryKindLabel(entry.kind)}</h2>
+          <span className="step-label">{t('activity.dialog.detail')}</span>
+          <h2>{t(entryKindKey(entry.kind))}</h2>
         </div>
         <p className={incoming ? 'positive' : ''}>
           {incoming ? '+' : '−'}{formatSats(Math.abs(entry.amountSat))} <small>sats</small>
@@ -313,53 +344,55 @@ function ActivityDetail({ entry, onBack }: { readonly entry: Entry; readonly onB
           className={`activity-status ${entry.status}`}
           variant={entry.status === 'failed' ? 'destructive' : 'outline'}
         >
-          {entryStatusLabel(entry.status)}
+          {t(entryStatusKey(entry.status))}
         </Badge>
-        <Badge variant="secondary">{activityRailLabel(rail)}</Badge>
-        <Badge variant="outline">{incoming ? 'Ingreso' : 'Egreso'}</Badge>
+        <Badge variant="secondary">{t(activityRailKey(rail))}</Badge>
+        <Badge variant="outline">
+          {t(incoming ? 'activity.direction.incoming' : 'activity.direction.outgoing')}
+        </Badge>
       </div>
 
       <Separator className="activity-detail-separator" />
 
-      <DetailSection title="Datos">
-        <DetailRow label="Comisión" value={`${formatSats(entry.feeSat)} sats`} />
-        <DetailRow label="Creado" value={<time dateTime={entry.createdAt}>{formatFullDate(entry.createdAt)}</time>} />
-        <DetailRow label="Actualizado" value={<time dateTime={entry.updatedAt}>{formatFullDate(entry.updatedAt)}</time>} />
-        <DetailRow label="Concepto" value={entry.note || 'Sin concepto'} />
-        <DetailRow label="Contraparte" value={entry.counterparty || 'No disponible'} technical={Boolean(entry.counterparty)} />
-        <DetailRow label="ID del movimiento" value={entry.id} technical />
-        {entry.cursor > 0 && <DetailRow label="Cursor" value={entry.cursor} technical />}
+      <DetailSection title={t('activity.section.data')}>
+        <DetailRow label={t('activity.detail.fee')} value={`${formatSats(entry.feeSat)} sats`} />
+        <DetailRow label={t('activity.detail.created')} value={<time dateTime={entry.createdAt}>{formatFullDate(entry.createdAt)}</time>} />
+        <DetailRow label={t('activity.detail.updated')} value={<time dateTime={entry.updatedAt}>{formatFullDate(entry.updatedAt)}</time>} />
+        <DetailRow label={t('activity.detail.note')} value={entry.note || t('activity.detail.note.empty')} />
+        <DetailRow label={t('activity.detail.counterparty')} value={entry.counterparty || t('activity.detail.counterparty.empty')} technical={Boolean(entry.counterparty)} />
+        <DetailRow label={t('activity.detail.id')} value={entry.id} technical />
+        {entry.cursor > 0 && <DetailRow label={t('activity.detail.cursor')} value={entry.cursor} technical />}
       </DetailSection>
 
       {entry.progress && (
-        <DetailSection title="Progreso">
-          <DetailRow label="Etapa" value={entryPhaseLabel(entry.progress.phase)} />
-          {progressPaymentHash && <DetailRow label="Payment hash" value={progressPaymentHash} technical />}
-          {entry.progress.txid && <DetailRow label="Transaction ID" value={entry.progress.txid} technical />}
+        <DetailSection title={t('activity.section.progress')}>
+          <DetailRow label={t('activity.detail.phase')} value={t(entryPhaseKey(entry.progress.phase))} />
+          {progressPaymentHash && <DetailRow label={t('activity.detail.paymentHash')} value={progressPaymentHash} technical />}
+          {entry.progress.txid && <DetailRow label={t('activity.detail.txid')} value={entry.progress.txid} technical />}
           {entry.progress.confirmationHeight > 0 && (
-            <DetailRow label="Altura de confirmación" value={formatSats(entry.progress.confirmationHeight)} />
+            <DetailRow label={t('activity.detail.confirmationHeight')} value={formatSats(entry.progress.confirmationHeight)} />
           )}
-          {entry.progress.vTXOOutpoint && <DetailRow label="VTXO outpoint" value={entry.progress.vTXOOutpoint} technical />}
-          {entry.progress.preimage && <DetailRow label="Preimage" value={entry.progress.preimage} technical />}
+          {entry.progress.vTXOOutpoint && <DetailRow label={t('activity.detail.vtxo')} value={entry.progress.vTXOOutpoint} technical />}
+          {entry.progress.preimage && <DetailRow label={t('activity.detail.preimage')} value={entry.progress.preimage} technical />}
         </DetailSection>
       )}
 
       {entry.request && (
-        <DetailSection title="Solicitud original">
-          <DetailRow label="Tipo" value={activityRailLabel(entry.request.type)} />
-          {entry.request.lightningInvoice && <DetailRow label="Factura Lightning" value={entry.request.lightningInvoice} technical />}
+        <DetailSection title={t('activity.section.request')}>
+          <DetailRow label={t('activity.detail.type')} value={t(activityRailKey(entry.request.type))} />
+          {entry.request.lightningInvoice && <DetailRow label={t('activity.detail.invoice')} value={entry.request.lightningInvoice} technical />}
           {requestPaymentHash && requestPaymentHash !== progressPaymentHash && (
-            <DetailRow label="Payment hash" value={requestPaymentHash} technical />
+            <DetailRow label={t('activity.detail.paymentHash')} value={requestPaymentHash} technical />
           )}
-          {entry.request.onchainAddress && <DetailRow label="Dirección on-chain" value={entry.request.onchainAddress} technical />}
-          {entry.request.arkAddress && <DetailRow label="Dirección Ark" value={entry.request.arkAddress} technical />}
+          {entry.request.onchainAddress && <DetailRow label={t('activity.detail.onchainAddress')} value={entry.request.onchainAddress} technical />}
+          {entry.request.arkAddress && <DetailRow label={t('activity.detail.arkAddress')} value={entry.request.arkAddress} technical />}
         </DetailSection>
       )}
 
       {entry.status === 'failed' && (
-        <DetailSection title="Error">
-          {entry.failureCode && <DetailRow label="Tipo" value={entryFailureLabel(entry.failureCode)} />}
-          <DetailRow label="Motivo" value={entry.failureReason || 'Sin más información'} />
+        <DetailSection title={t('activity.section.error')}>
+          {entry.failureCode && <DetailRow label={t('activity.detail.type')} value={t(entryFailureKey(entry.failureCode))} />}
+          <DetailRow label={t('activity.detail.failureReason')} value={entry.failureReason || t('activity.detail.failureReason.empty')} />
         </DetailSection>
       )}
     </article>

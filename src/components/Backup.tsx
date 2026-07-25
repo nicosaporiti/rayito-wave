@@ -1,4 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { useI18n } from '../i18n/useI18n';
+import type { MessageKey } from '../i18n/messages';
 import { ArrowUpIcon } from './Icons';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Button } from './ui/button';
@@ -13,8 +15,9 @@ type BackupProps = {
 const CHECK_INDEXES = [3, 11, 23] as const;
 
 export function Backup({ mnemonic, onConfirmed }: BackupProps) {
+  const { t } = useI18n();
   const [answers, setAnswers] = useState<Record<number, string>>({});
-  const [error, setError] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<MessageKey | null>(null);
 
   useEffect(() => {
     const guard = (event: BeforeUnloadEvent) => { event.preventDefault(); };
@@ -25,7 +28,7 @@ export function Backup({ mnemonic, onConfirmed }: BackupProps) {
   const confirm = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
     const valid = CHECK_INDEXES.every((index) => answers[index]?.trim().toLowerCase() === mnemonic[index]?.toLowerCase());
-    if (!valid) return setError('Alguna palabra no coincide. Revisá tu copia e intentá otra vez.');
+    if (!valid) return setErrorKey('backup.check.error');
     onConfirmed();
   };
 
@@ -38,16 +41,14 @@ export function Backup({ mnemonic, onConfirmed }: BackupProps) {
       >
         <div className="backup-heading">
           <div>
-            <span className="step-label">02 — Respaldo</span>
-            <h1 id="backup-title">Estas 24 palabras son tu wallet.</h1>
+            <span className="step-label">{t('backup.step')}</span>
+            <h1 id="backup-title">{t('backup.title')}</h1>
           </div>
           <span className="backup-count">24</span>
         </div>
         <Alert className="warning-strip backup-warning">
-          <AlertTitle>Guardalas fuera de internet.</AlertTitle>
-          <AlertDescription>
-            Quien tenga estas palabras puede mover tus fondos. No hay botón de “recuperar contraseña”.
-          </AlertDescription>
+          <AlertTitle>{t('backup.warning.title')}</AlertTitle>
+          <AlertDescription>{t('backup.warning.copy')}</AlertDescription>
         </Alert>
         <ol className="words-grid">
           {mnemonic.map((word, index) => (
@@ -59,12 +60,12 @@ export function Backup({ mnemonic, onConfirmed }: BackupProps) {
         </ol>
 
         <form className="backup-check" onSubmit={confirm}>
-          <h2>Confirmemos tu copia</h2>
-          <p>Ingresá estas tres palabras para continuar.</p>
+          <h2>{t('backup.check.title')}</h2>
+          <p>{t('backup.check.copy')}</p>
           <div className="check-fields">
             {CHECK_INDEXES.map((index) => (
               <label className="field" key={index}>
-                <span>Palabra #{index + 1}</span>
+                <span>{t('backup.check.word', { position: index + 1 })}</span>
                 <Input
                   value={answers[index] ?? ''}
                   onChange={(event) => setAnswers((current) => ({
@@ -72,18 +73,18 @@ export function Backup({ mnemonic, onConfirmed }: BackupProps) {
                     [index]: event.target.value,
                   }))}
                   autoComplete="off"
-                  aria-invalid={Boolean(error)}
+                  aria-invalid={Boolean(errorKey)}
                 />
               </label>
             ))}
           </div>
-          {error && (
+          {errorKey && (
             <Alert className="form-error backup-error" variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>{t(errorKey)}</AlertDescription>
             </Alert>
           )}
           <Button className="primary-button backup-submit" type="submit" size="lg">
-            Ya guardé mi frase <ArrowUpIcon />
+            {t('backup.submit')} <ArrowUpIcon />
           </Button>
         </form>
       </Card>

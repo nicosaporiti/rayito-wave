@@ -1,7 +1,8 @@
 /** @vitest-environment jsdom */
 
 import '@testing-library/jest-dom/vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
+import { render } from '../test/render';
 import { describe, expect, it, vi } from 'vitest';
 import { Brand } from './Brand';
 

@@ -1,4 +1,5 @@
 import type { MouseEvent } from 'react';
+import { useI18n } from '../i18n/useI18n';
 import { RayitoMark } from './RayitoMark';
 import { Badge } from './ui/badge';
 
@@ -7,6 +8,7 @@ type BrandProps = {
 };
 
 export function Brand({ onHome }: BrandProps) {
+  const { t } = useI18n();
   const navigateHome = (event: MouseEvent<HTMLAnchorElement>): void => {
     event.preventDefault();
     onHome();
@@ -16,22 +18,25 @@ export function Brand({ onHome }: BrandProps) {
     <a
       className="brand wallet-brand"
       href="/"
-      aria-label="Rayito, inicio"
+      aria-label={t('brand.home')}
       onClick={navigateHome}
     >
       <span className="brand-mark wallet-brand__mark">
         <RayitoMark />
       </span>
       <span className="brand-name wallet-brand__name">rayito</span>
+      <span className="wallet-brand__tagline">{t('brand.tagline')}</span>
     </a>
   );
 }
 
 export function NetworkBadge() {
+  const { t } = useI18n();
+
   return (
     <Badge className="network-badge network-status" variant="outline">
       <span className="network-status__dot" aria-hidden="true" />
-      Signet · prueba
+      {t('brand.network')}
     </Badge>
   );
 }
