@@ -26,7 +26,12 @@ const LOADING_LABEL_KEYS: Readonly<Record<string, MessageKey>> = {
   stopped: 'app.loading.stopped',
 };
 
-export function App() {
+type AppProps = {
+  /** True when this page load deleted the previous wallet from the device. */
+  readonly walletResetDone?: boolean;
+};
+
+export function App({ walletResetDone = false }: AppProps) {
   const { t } = useI18n();
   const { phase, error, start, stop } = useWallet();
   const { recovery } = useWalletRecovery();
@@ -106,7 +111,7 @@ export function App() {
   } else {
     switch (phase) {
       case 'needsWallet':
-        content = <Onboarding onCreated={setPendingBackup} />;
+        content = <Onboarding onCreated={setPendingBackup} walletResetDone={walletResetDone} />;
         break;
       case 'locked':
         content = <Unlock />;

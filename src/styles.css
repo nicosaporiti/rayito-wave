@@ -1568,6 +1568,82 @@ form {
   margin-top: 26px;
 }
 
+.unlock-forgot {
+  margin-top: 14px;
+  font-size: 12px;
+}
+
+.reset-warnings {
+  width: 100%;
+  margin: 22px 0 0;
+  padding: 14px 16px 14px 30px;
+  color: var(--text-soft);
+  background: rgba(233, 135, 128, 0.055);
+  border: 1px solid rgba(233, 135, 128, 0.17);
+  border-radius: 14px;
+  font-size: 11px;
+  line-height: 1.55;
+  text-align: left;
+  list-style: disc;
+}
+
+.reset-warnings li::marker {
+  color: var(--danger);
+}
+
+.reset-warnings li + li {
+  margin-top: 8px;
+}
+
+.reset-confirm {
+  width: 100%;
+  margin-top: 18px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  color: var(--foreground);
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: left;
+  cursor: pointer;
+}
+
+.reset-confirm input {
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  flex: none;
+  accent-color: var(--danger);
+}
+
+.reset-error {
+  width: 100%;
+  margin-top: 14px;
+  text-align: left;
+}
+
+.reset-done {
+  width: auto;
+  margin: 14px 14px 0;
+}
+
+.reset-done [data-slot="alert-description"] {
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.reset-actions {
+  width: 100%;
+  margin-top: 22px;
+  display: grid;
+  gap: 8px;
+}
+
+.reset-submit {
+  width: 100%;
+  white-space: normal;
+}
+
 .loading-card > p {
   color: var(--foreground) !important;
   font-size: 17px !important;

@@ -9,6 +9,7 @@ import {
   RUNTIME_MANIFEST_VERSION,
 } from '@lightninglabs/wavelength-web';
 import { describe, expect, it } from 'vitest';
+import { RUNTIME_LOCK_NAME } from './wallet-reset';
 
 const runtimeDir = fileURLToPath(
   new URL(`../../public/wavewalletdk/${RUNTIME_MANIFEST_VERSION}/`, import.meta.url),
@@ -26,5 +27,16 @@ describe('hosted runtime assets', () => {
     const digest = `sha256-${createHash('sha256').update(bytes).digest('base64')}`;
 
     expect(digest).toBe(RUNTIME_ASSET_DIGESTS[name]);
+  });
+});
+
+describe('runtime lock name', () => {
+  it('matches the lock the SDK holds while a tab runs the wallet', () => {
+    const source = readFileSync(
+      fileURLToPath(new URL('../../node_modules/@lightninglabs/wavelength-web/dist/runtime-lock.js', import.meta.url)),
+      'utf8',
+    );
+
+    expect(source).toContain(`RUNTIME_LOCK_NAME = '${RUNTIME_LOCK_NAME}'`);
   });
 });

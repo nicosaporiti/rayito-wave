@@ -8,6 +8,7 @@ Wallet web autocustodial de Bitcoin construida sobre [Wavelength SDK](https://wa
 - Creación de una wallet protegida por contraseña.
 - Respaldo obligatorio y verificación de la frase de 24 palabras.
 - Desbloqueo local en visitas posteriores.
+- «¿Olvidaste tu contraseña?»: borra la wallet de este navegador, con advertencias y confirmación explícita, para crear una nueva o recuperarla con las 24 palabras.
 - Restauración con recuperación asistida de saldo e historial.
 - Balance y actividad en vivo.
 - Recepción Lightning, dirección de depósito on-chain y envío con cotización previa.

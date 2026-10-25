@@ -12,11 +12,13 @@ import { render } from '../test/render';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { LanguageSwitch } from './LanguageSwitch';
-import { Onboarding } from './Onboarding';
+import { Onboarding, Unlock } from './Onboarding';
 
 const restore = vi.hoisted(() => vi.fn(async () => undefined));
+const stop = vi.hoisted(() => vi.fn(async () => undefined));
 
 vi.mock('@lightninglabs/wavelength-react', () => ({
+  useWallet: () => ({ stop }),
   useWalletCreate: () => ({
     create: vi.fn(),
     createError: null,
@@ -115,5 +117,63 @@ describe('Onboarding recovery', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Español' }));
 
     expect(screen.getByText('La frase debe tener 24 palabras; encontramos 3.')).toBeInTheDocument();
+  });
+});
+
+describe('Forgotten password', () => {
+  const reload = vi.fn();
+
+  afterEach(() => {
+    cleanup();
+    stop.mockClear();
+    reload.mockClear();
+    window.sessionStorage.clear();
+    window.localStorage.clear();
+    vi.unstubAllGlobals();
+  });
+
+  it('warns about the consequences and only deletes after explicit confirmation', async () => {
+    vi.stubGlobal('location', { ...window.location, reload });
+    render(<Unlock />);
+
+    fireEvent.click(screen.getByRole('button', { name: '¿Olvidaste tu contraseña?' }));
+
+    expect(screen.getByRole('heading', { name: 'Borrar la wallet de este navegador' }))
+      .toBeInTheDocument();
+    expect(screen.getByText(/No podemos recuperar ni cambiar tu contraseña/)).toBeInTheDocument();
+    expect(screen.getByText(/No se puede deshacer/)).toBeInTheDocument();
+    expect(screen.getByText(/Sin ellas, se pierden para siempre/)).toBeInTheDocument();
+    expect(screen.getByText(/Los pagos o cobros que estén en curso/)).toBeInTheDocument();
+    expect(screen.getByText(/Cierra Rayito en otras pestañas/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Borrar la wallet de este navegador' })).toHaveFocus();
+
+    const deleteButton = screen.getByRole('button', { name: 'Borrar wallet de este navegador' });
+    expect(deleteButton).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /Entiendo que se borrará la wallet/ }));
+    fireEvent.click(deleteButton);
+
+    await waitFor(() => expect(reload).toHaveBeenCalledOnce());
+    expect(stop).toHaveBeenCalledOnce();
+    expect(stop.mock.invocationCallOrder[0]).toBeLessThan(reload.mock.invocationCallOrder[0] ?? 0);
+    expect(Number(window.sessionStorage.getItem('rayito.walletReset'))).toBeGreaterThan(0);
+  });
+
+  it('goes back to the unlock form without requesting anything', () => {
+    render(<Unlock />);
+
+    fireEvent.click(screen.getByRole('button', { name: '¿Olvidaste tu contraseña?' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Volver' }));
+
+    expect(screen.getByRole('heading', { name: 'Desbloquea tu wallet' })).toBeInTheDocument();
+    expect(window.sessionStorage.getItem('rayito.walletReset')).toBeNull();
+  });
+
+  it('announces the deletion once the setup screen comes back', async () => {
+    render(<Onboarding onCreated={vi.fn()} walletResetDone />);
+
+    const notice = screen.getByRole('status');
+    expect(notice).toBeEmptyDOMElement();
+    await waitFor(() => expect(notice).toHaveTextContent('Borramos la wallet de este navegador'));
   });
 });
