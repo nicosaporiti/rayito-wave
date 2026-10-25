@@ -10,7 +10,7 @@ const wavelength = vi.hoisted(() => ({
 vi.mock('@lightninglabs/wavelength-web', () => ({
   createWebWalletEngine: wavelength.createEngine,
   defaultConfig: wavelength.defaultConfig,
-  RUNTIME_MANIFEST_VERSION: 'v0.1.0',
+  RUNTIME_MANIFEST_VERSION: 'v0.2.0',
 }));
 vi.mock('@lightninglabs/wavelength-web/wavewalletdk-worker.js?raw', () => ({
   default: 'self.onmessage = () => undefined;',

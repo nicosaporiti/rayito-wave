@@ -1,1 +1,1 @@
-public/wavewalletdk/v0.1.0/wavewalletdk.wasm filter=lfs diff=lfs merge=lfs -text
+public/wavewalletdk/v0.2.0/wavewalletdk.wasm filter=lfs diff=lfs merge=lfs -text

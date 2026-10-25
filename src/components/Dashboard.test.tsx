@@ -18,14 +18,25 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VALID_BOLT11_INVOICE, VALID_LNURL } from '../test/fixtures';
 import { Dashboard } from './Dashboard';
 
+const EMPTY_BALANCE = {
+  confirmedSat: 0,
+  creditAvailableSat: 0,
+  creditReservedSat: 0,
+  pendingInSat: 0,
+  pendingOutSat: 0,
+};
+
 const wallet = vi.hoisted(() => ({
   activity: [] as Entry[],
+  balance: null as null | Record<string, number>,
   depositData: null as DepositResult | null,
   history: [] as Entry[],
   receiveResult: null as ReceiveResult | null,
 }));
 const deposit = vi.hoisted(() => vi.fn());
 const listActivity = vi.hoisted(() => vi.fn());
+const prepareSend = vi.hoisted(() => vi.fn());
+const sendPrepared = vi.hoisted(() => vi.fn());
 const qrScanner = vi.hoisted(() => ({
   callback: null as null | ((result?: { getText: () => string }) => void),
   stop: vi.fn(),
@@ -45,7 +56,7 @@ vi.mock('@lightninglabs/wavelength-react', async () => {
 
   return {
     useWalletActivity: () => wallet.activity,
-    useWalletBalance: () => ({ confirmedSat: 0, pendingInSat: 0, pendingOutSat: 0 }),
+    useWalletBalance: () => wallet.balance,
     useWalletDeposit: () => ({
       deposit,
       depositData: wallet.depositData,
@@ -62,7 +73,7 @@ vi.mock('@lightninglabs/wavelength-react', async () => {
       resetList: vi.fn(),
     }),
     useWalletPrepareSend: () => ({
-      prepare: vi.fn(), prepareData: null, prepareError: null, preparePending: false,
+      prepare: prepareSend, prepareData: null, prepareError: null, preparePending: false,
     }),
     useWalletReceive: () => {
       const [receiveData, setReceiveData] = useState<ReceiveResult | null>(null);
@@ -76,7 +87,7 @@ vi.mock('@lightninglabs/wavelength-react', async () => {
     },
     useWalletRecovery: () => ({ acknowledge: vi.fn(), recovery: { status: 'idle' } }),
     useWalletSend: () => ({
-      sendData: null, sendError: null, sendPending: false, sendPrepared: vi.fn(),
+      sendData: null, sendError: null, sendPending: false, sendPrepared,
     }),
   };
 });
@@ -162,10 +173,13 @@ describe('Dashboard receive flow', () => {
       value: visualViewport,
     });
     wallet.activity = [];
+    wallet.balance = { ...EMPTY_BALANCE };
     wallet.depositData = null;
     wallet.history = [];
     deposit.mockReset();
     listActivity.mockReset();
+    prepareSend.mockReset();
+    sendPrepared.mockReset();
     listActivity.mockImplementation(async () => ({
       activity: {
         entries: wallet.history,
@@ -277,6 +291,72 @@ describe('Dashboard receive flow', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent('supera el máximo posible');
     expect(screen.getByRole('button', { name: 'Revisar pago' })).toBeDisabled();
+  });
+
+  it('authorizes server credit up to what the wallet can fund on invoice sends', async () => {
+    wallet.balance = { ...EMPTY_BALANCE, confirmedSat: 5_000, creditAvailableSat: 300 };
+    render(<Dashboard />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar' }));
+    fireEvent.change(screen.getByLabelText('Factura Lightning o dirección'), {
+      target: { value: VALID_BOLT11_INVOICE },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Revisar pago' }));
+
+    await waitFor(() => expect(prepareSend).toHaveBeenCalledWith({
+      invoice: VALID_BOLT11_INVOICE,
+      maxCreditSat: 5_300,
+      maxCreditTopupSat: 5_000,
+    }));
+  });
+
+  it('shows server credit next to the balance once the wallet holds some', () => {
+    wallet.balance = { ...EMPTY_BALANCE, confirmedSat: 4_000, creditAvailableSat: 990 };
+    render(<Dashboard />);
+
+    expect(screen.getByText('+990')).toBeInTheDocument();
+    expect(screen.getByText(/en crédito para pagos chicos/)).toBeInTheDocument();
+  });
+
+  it('shows the credit top-up and total, and asks for a fresh quote after a failed send', async () => {
+    wallet.balance = { ...EMPTY_BALANCE, confirmedSat: 5_000 };
+    prepareSend.mockResolvedValue({
+      amountSat: 10,
+      creditPreview: {
+        arkFundingSat: 0,
+        creditAppliedSat: 10,
+        creditShortfallSat: 10,
+        creditTopupSat: 1_000,
+        mustUseCredit: true,
+      },
+      expectedFeeSat: 0,
+      expectedTotalOutflowSat: 1_000,
+      expiresAtUnix: 0,
+      feeKnown: true,
+      rail: 'credit',
+      totalOutflowKnown: true,
+      warning: '',
+    });
+    sendPrepared.mockRejectedValue(new Error('swap server unavailable'));
+    render(<Dashboard />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar' }));
+    fireEvent.change(screen.getByLabelText('Factura Lightning o dirección'), {
+      target: { value: VALID_BOLT11_INVOICE },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Revisar pago' }));
+
+    const total = await screen.findByText('Total que sale de tu wallet');
+    expect(total.nextElementSibling).toHaveTextContent('1.000 sats');
+    expect(screen.getByText('Recarga de crédito').nextElementSibling)
+      .toHaveTextContent('1.000 sats');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar envío' }));
+
+    await waitFor(() => expect(screen.getByRole('alert'))
+      .toHaveTextContent('swap server unavailable'));
+    expect(screen.getByRole('button', { name: 'Revisar pago' })).toBeInTheDocument();
+    expect(sendPrepared).toHaveBeenCalledOnce();
   });
 
   it('keeps scanning invalid payloads and fills the form after a valid BOLT11 QR', async () => {

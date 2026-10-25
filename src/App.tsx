@@ -187,13 +187,30 @@ function Loading({ phase }: { phase: string }) {
   );
 }
 
-function isWorkerError(error: Error): error is Error & { readonly code: 'worker_error' } {
-  return 'code' in error && error.code === 'worker_error';
+type KnownErrorCode =
+  | 'worker_error'
+  | 'wallet_locked'
+  | 'runtime_lock_unavailable'
+  | 'asset_load_failed'
+  | 'asset_integrity_failed';
+
+const KNOWN_ERROR_KEYS: Readonly<Record<KnownErrorCode, { message: MessageKey; hint: MessageKey }>> = {
+  worker_error: { message: 'app.error.worker', hint: 'app.error.workerHint' },
+  wallet_locked: { message: 'app.error.walletLocked', hint: 'app.error.walletLockedHint' },
+  runtime_lock_unavailable: { message: 'app.error.lockUnavailable', hint: 'app.error.lockUnavailableHint' },
+  asset_load_failed: { message: 'app.error.assetLoad', hint: 'app.error.assetLoadHint' },
+  asset_integrity_failed: { message: 'app.error.integrity', hint: 'app.error.integrityHint' },
+};
+
+function knownErrorCode(error: Error): KnownErrorCode | null {
+  if (!('code' in error) || typeof error.code !== 'string') return null;
+  return Object.hasOwn(KNOWN_ERROR_KEYS, error.code) ? error.code as KnownErrorCode : null;
 }
 
 function FatalError({ error }: { error: Error }) {
   const { t } = useI18n();
-  const workerFailed = isWorkerError(error);
+  const code = knownErrorCode(error);
+  const keys = code ? KNOWN_ERROR_KEYS[code] : null;
   const retry = (): void => {
     const url = new URL(window.location.href);
     url.searchParams.set('retry', Date.now().toString());
@@ -211,14 +228,14 @@ function FatalError({ error }: { error: Error }) {
         <h1 id="fatal-error-title">{t('app.error.title')}</h1>
         <Alert className="form-error fatal-error-alert" variant="destructive">
           <AlertDescription>
-            {workerFailed ? t('app.error.worker') : error.message}
+            {keys ? t(keys.message) : error.message}
           </AlertDescription>
         </Alert>
-        {workerFailed && (
+        {keys && (
           <>
-            <p>{t('app.error.workerHint')}</p>
+            <p>{t(keys.hint)}</p>
             <p><small>{t('app.error.technicalDetail', { message: error.message })}</small></p>
-            <p>{t('app.error.profileWarning')}</p>
+            {code === 'worker_error' && <p>{t('app.error.profileWarning')}</p>}
           </>
         )}
         <Button className="primary-button state-card__action" type="button" size="lg" onClick={retry}>

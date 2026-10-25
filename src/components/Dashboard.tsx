@@ -177,6 +177,7 @@ export function Dashboard({
   const pendingOutSat = balance?.pendingOutSat ?? 0;
   const hasPendingBalance = pendingInSat > 0 || pendingOutSat > 0;
   const confirmedSat = balance?.confirmedSat ?? 0;
+  const creditAvailableSat = balance?.creditAvailableSat ?? 0;
   const blockHeight = info?.blockHeight ?? 0;
   const depositEntry = depositController.depositData
     ? activity.find((entry) => (
@@ -235,6 +236,11 @@ export function Dashboard({
                   {pendingOutSat > 0 && (
                     <span>
                       <strong>−{formatSats(pendingOutSat)}</strong> {t('dashboard.balance.outgoing')}
+                    </span>
+                  )}
+                  {creditAvailableSat > 0 && (
+                    <span>
+                      <strong>+{formatSats(creditAvailableSat)}</strong> {t('dashboard.balance.credit')}
                     </span>
                   )}
                 </div>
@@ -656,12 +662,25 @@ function SendForm() {
   const [quote, setQuote] = useState<PrepareSendResult | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
   const { prepare, preparePending, prepareError } = useWalletPrepareSend();
-  const { sendPrepared, sendPending, sendError, sendData } = useWalletSend();
+  const { sendPrepared, sendPending, sendData } = useWalletSend();
+  const balance = useWalletBalance();
+  const [sendFailure, setSendFailure] = useState<SendFailure | null>(null);
 
   const isLightning = destination.trim().toLowerCase().startsWith('ln');
   const amountResult = parseSatoshiAmount(amount);
   const request = (): SendRequest | null => {
-    if (isLightning) return { invoice: destination.trim() };
+    if (isLightning) {
+      // Since SDK 0.2.0 invoice sends never touch server credit unless the
+      // request caps it, which leaves invoices below the server's minimum Ark
+      // output unpayable. Allow whatever the wallet could fund; the quote
+      // review shows the resulting total outflow before the user confirms.
+      const spendableSat = balance?.confirmedSat ?? 0;
+      return {
+        invoice: destination.trim(),
+        maxCreditSat: spendableSat + (balance?.creditAvailableSat ?? 0),
+        maxCreditTopupSat: spendableSat,
+      };
+    }
     if (!amountResult.valid) return null;
     return { onchainAddress: destination.trim(), amountSat: amountResult.amountSat };
   };
@@ -669,11 +688,24 @@ function SendForm() {
     event.preventDefault();
     const sendRequest = request();
     if (!sendRequest) return;
+    setSendFailure(null);
     try { setQuote(await prepare(sendRequest)); } catch { /* Error is rendered from prepareError. */ }
   };
   const confirmSend = async () => {
     if (!quote) return;
-    try { await sendPrepared(quote); } catch { /* Error is rendered from sendError. */ }
+    if (quote.expiresAtUnix > 0 && Date.now() >= quote.expiresAtUnix * 1_000) {
+      setQuote(null);
+      setSendFailure({ messageKey: 'send.quote.expired' });
+      return;
+    }
+    try {
+      await sendPrepared(quote);
+    } catch (error) {
+      // A failed dispatch consumes the prepared intent, so the SDK requires a
+      // fresh quote before retrying instead of resending this one.
+      setQuote(null);
+      setSendFailure({ message: error instanceof Error ? error.message : String(error) });
+    }
   };
   const useScannedInvoice = useCallback((invoice: string): void => {
     setDestination(invoice);
@@ -720,6 +752,20 @@ function SendForm() {
                   : t('send.quote.fee.unknown')}
               </dd>
             </div>
+            {(quote.creditPreview?.creditTopupSat ?? 0) > 0 && (
+              <div>
+                <dt>{t('send.quote.creditTopup')}</dt>
+                <dd>{formatSats(quote.creditPreview?.creditTopupSat ?? 0)} sats</dd>
+              </div>
+            )}
+            <div>
+              <dt>{t('send.quote.total')}</dt>
+              <dd>
+                {quote.totalOutflowKnown
+                  ? `${formatSats(quote.expectedTotalOutflowSat)} sats`
+                  : t('send.quote.fee.unknown')}
+              </dd>
+            </div>
             <div>
               <dt>{t('send.quote.rail')}</dt>
               <dd>{quote.rail}</dd>
@@ -730,7 +776,6 @@ function SendForm() {
               <AlertDescription>{quote.warning}</AlertDescription>
             </Alert>
           )}
-          {sendError && <FormError message={sendError.message} />}
           <div className="form-actions">
             <Button
               className="primary-button"
@@ -793,6 +838,11 @@ function SendForm() {
             <FormError message={t(amountResult.error)} />
           )}
           {prepareError && <FormError message={prepareError.message} />}
+          {sendFailure && (
+            <FormError
+              message={'messageKey' in sendFailure ? t(sendFailure.messageKey) : sendFailure.message}
+            />
+          )}
           <Button
             className="primary-button"
             type="submit"
@@ -826,6 +876,10 @@ function ResultBox({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+type SendFailure =
+  | { readonly messageKey: MessageKey }
+  | { readonly message: string };
 
 function FormError({ message }: { readonly message: string }) {
   return (

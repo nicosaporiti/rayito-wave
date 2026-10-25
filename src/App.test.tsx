@@ -303,4 +303,39 @@ describe('App wallet locking', () => {
     expect(screen.getByText(/No borres los datos del perfil original/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument();
   });
+
+  it('tells the user to close the other tab when the wallet is open elsewhere', () => {
+    wallet.phase = 'error';
+    wallet.error = Object.assign(new Error('wallet is open in another tab'), {
+      code: 'wallet_locked',
+    });
+
+    render(<App />);
+
+    expect(screen.getByText(/ya está abierta en otra pestaña/)).toBeInTheDocument();
+    expect(screen.getByText(/Cierra la otra pestaña/)).toBeInTheDocument();
+    expect(screen.queryByText(/No borres los datos del perfil original/)).not.toBeInTheDocument();
+  });
+
+  it('explains a runtime integrity failure without blaming the user', () => {
+    wallet.phase = 'error';
+    wallet.error = Object.assign(new Error('asset failed integrity verification'), {
+      code: 'asset_integrity_failed',
+    });
+
+    render(<App />);
+
+    expect(screen.getByText(/no coinciden con la versión esperada/)).toBeInTheDocument();
+    expect(screen.getByText(/Tus fondos y tu frase no se ven afectados/)).toBeInTheDocument();
+    expect(screen.getByText(/asset failed integrity verification/)).toBeInTheDocument();
+  });
+
+  it('falls back to the raw message for codes inherited from Object.prototype', () => {
+    wallet.phase = 'error';
+    wallet.error = Object.assign(new Error('unexpected failure'), { code: 'constructor' });
+
+    render(<App />);
+
+    expect(screen.getByText('unexpected failure')).toBeInTheDocument();
+  });
 });
