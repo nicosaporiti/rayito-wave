@@ -16,6 +16,7 @@ import { LanguageSwitch } from './LanguageSwitch';
 import type { DepositResult, Entry, ReceiveResult } from '@lightninglabs/wavelength-react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VALID_BOLT11_INVOICE, VALID_LNURL } from '../test/fixtures';
+import { forgetActiveNetwork } from '../lib/network';
 import { Dashboard } from './Dashboard';
 
 const EMPTY_BALANCE = {
@@ -203,6 +204,8 @@ describe('Dashboard receive flow', () => {
 
   afterEach(() => {
     cleanup();
+    localStorage.clear();
+    forgetActiveNetwork();
     Object.defineProperty(window, 'visualViewport', {
       configurable: true,
       value: undefined,
@@ -445,7 +448,7 @@ describe('Dashboard receive flow', () => {
     expect(steps).toHaveTextContent('Sigue el depósito');
 
     const faucetLink = within(guideDialog).getByRole('link', {
-      name: 'Abrir Bitcoin Signet Faucet en una pestaña nueva',
+      name: 'Abrir el faucet de Signet en una pestaña nueva',
     });
     expect(faucetLink).toHaveAttribute('href', 'https://bitcoinsignetfaucet.com/');
     expect(faucetLink).toHaveAttribute('target', '_blank');
@@ -460,6 +463,37 @@ describe('Dashboard receive flow', () => {
     );
     expect(mempoolLink).toHaveAttribute('target', '_blank');
     expect(mempoolLink).toHaveAttribute('rel', 'noopener noreferrer');
+  });
+
+  it('points the deposit guide at the testnet3 faucet and explorer on testnet3', async () => {
+    localStorage.setItem('rayito.network', 'testnet');
+    forgetActiveNetwork();
+    const depositResult: DepositResult = {
+      address: 'tb1qrayitotestnetexample',
+      entry: historyEntry(8, 'deposit', 'onchain'),
+    };
+    deposit.mockResolvedValue(depositResult);
+    const view = render(<Dashboard />);
+
+    fireEvent.click(screen.getByRole('tab', { name: /^Movimientos/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Conseguir sats de prueba' }));
+    const requestDialog = screen.getByRole('dialog', { name: 'Fondear wallet' });
+    expect(within(requestDialog).getByText(/Rayito usa Testnet3/)).toBeInTheDocument();
+    fireEvent.click(within(requestDialog).getByRole('button', {
+      name: 'Generar dirección Testnet3',
+    }));
+    await waitFor(() => expect(deposit).toHaveBeenCalledOnce());
+
+    wallet.depositData = depositResult;
+    view.rerender(<Dashboard />);
+
+    const guideDialog = screen.getByRole('dialog', { name: 'Fondear wallet' });
+    expect(within(guideDialog).getByRole('link', {
+      name: 'Abrir el faucet de Testnet3 en una pestaña nueva',
+    })).toHaveAttribute('href', 'https://coinfaucet.eu/en/btc-testnet/');
+    expect(within(guideDialog).getByRole('link', {
+      name: 'Seguir esta dirección en mempool Testnet3 en una pestaña nueva',
+    })).toHaveAttribute('href', `https://mempool.space/testnet/address/${depositResult.address}`);
   });
 
   it('allows another deposit after the previous one reaches a terminal state', () => {

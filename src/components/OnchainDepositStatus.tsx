@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import type { Entry } from '@lightninglabs/wavelength-react';
 import { useI18n } from '../i18n/useI18n';
+import { activeNetworkProfile } from '../lib/network';
 import {
   depositMonitorState,
   parseEsploraDeposit,
@@ -9,7 +10,6 @@ import {
 } from '../lib/onchain-deposit';
 import { Progress } from './ui/progress';
 
-const SIGNET_ESPLORA_API = 'https://mempool-signet.testnet.lightningcluster.com/api';
 const POLL_INTERVAL_MS = 10_000;
 
 type OnchainDepositStatusProps = {
@@ -37,9 +37,10 @@ const EMPTY_SNAPSHOT: ChainSnapshot = {
 
 async function fetchChainSnapshot(address: string, signal: AbortSignal): Promise<ChainSnapshot> {
   const encodedAddress = encodeURIComponent(address);
+  const { esploraApi } = activeNetworkProfile();
   const [transactionsResponse, tipResponse] = await Promise.all([
-    fetch(`${SIGNET_ESPLORA_API}/address/${encodedAddress}/txs`, { signal }),
-    fetch(`${SIGNET_ESPLORA_API}/blocks/tip/height`, { signal }),
+    fetch(`${esploraApi}/address/${encodedAddress}/txs`, { signal }),
+    fetch(`${esploraApi}/blocks/tip/height`, { signal }),
   ]);
 
   if (!transactionsResponse.ok || !tipResponse.ok) {
@@ -115,7 +116,7 @@ export function OnchainDepositStatus({
     ? state.failureReason
     : t(state.detailKey);
   const txUrl = 'txid' in state && state.txid
-    ? `https://mempool.space/signet/tx/${encodeURIComponent(state.txid)}`
+    ? `${activeNetworkProfile().explorerUrl}/tx/${encodeURIComponent(state.txid)}`
     : '';
 
   return (

@@ -31,6 +31,13 @@ export function Dialog({ ariaLabel, children, onClose, panelClassName = '' }: Di
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLElement>(null);
+  // Read through a ref so a parent passing a fresh callback on every render
+  // does not re-run the focus effect and pull focus back to the close button.
+  const onCloseRef = useRef(onClose);
+
+  useLayoutEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useLayoutEffect(() => {
     const overlay = overlayRef.current;
@@ -73,7 +80,7 @@ export function Dialog({ ariaLabel, children, onClose, panelClassName = '' }: Di
     const previousOverflow = document.body.style.overflow;
     const handleDialogKey = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== 'Tab') return;
@@ -108,7 +115,7 @@ export function Dialog({ ariaLabel, children, onClose, panelClassName = '' }: Di
       document.removeEventListener('keydown', handleDialogKey);
       previouslyFocused?.focus();
     };
-  }, [onClose]);
+  }, []);
 
   const closeOnBackdrop = (event: MouseEvent<HTMLDivElement>): void => {
     if (event.target === event.currentTarget) onClose();

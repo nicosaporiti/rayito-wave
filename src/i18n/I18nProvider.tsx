@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createFormatters } from '../lib/format';
+import { activeNetworkProfile } from '../lib/network';
 import { I18nContext, type I18nValue, type MessageParams } from './context';
 import { interpolate } from './interpolate';
 import { initialLocale, persistLocale } from './locale';
@@ -13,6 +14,8 @@ type I18nProviderProps = {
 
 export function I18nProvider({ children, locale: forcedLocale }: I18nProviderProps) {
   const [detectedLocale, setDetectedLocale] = useState<Locale>(initialLocale);
+  // Fixed for the page load: switching network reloads the page.
+  const [networkLabel] = useState(() => activeNetworkProfile().label);
   const locale = forcedLocale ?? detectedLocale;
 
   const setLocale = useCallback((nextLocale: Locale): void => {
@@ -23,8 +26,9 @@ export function I18nProvider({ children, locale: forcedLocale }: I18nProviderPro
   const value = useMemo<I18nValue>(() => {
     const dictionary = messages[locale];
     const formatters = createFormatters(locale);
+    // Every message can name the active network as {network}.
     const t = (key: MessageKey, params?: MessageParams): string => (
-      interpolate(dictionary[key], params)
+      interpolate(dictionary[key], { network: networkLabel, ...params })
     );
 
     return {
@@ -40,7 +44,7 @@ export function I18nProvider({ children, locale: forcedLocale }: I18nProviderPro
       formatDate: (isoDate) => formatters.formatDate(isoDate) ?? t('date.now'),
       formatFullDate: (isoDate) => formatters.formatFullDate(isoDate) ?? t('date.unavailable'),
     };
-  }, [locale, setLocale]);
+  }, [locale, networkLabel, setLocale]);
 
   useEffect(() => {
     document.documentElement.lang = locale;

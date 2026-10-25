@@ -1,6 +1,6 @@
 # Rayito
 
-Wallet web autocustodial de Bitcoin construida sobre [Wavelength SDK](https://wavelength.lightning.engineering/introduction/what-is-wavelength-sdk/). Corre el daemon dentro del navegador mediante WebAssembly y usa la configuración pública de Bitcoin Signet.
+Wallet web autocustodial de Bitcoin construida sobre [Wavelength SDK](https://wavelength.lightning.engineering/introduction/what-is-wavelength-sdk/). Corre el daemon dentro del navegador mediante WebAssembly y usa la configuración pública de Bitcoin Signet o testnet3.
 
 ## Qué incluye
 
@@ -10,6 +10,7 @@ Wallet web autocustodial de Bitcoin construida sobre [Wavelength SDK](https://wa
 - Desbloqueo local en visitas posteriores.
 - «¿Olvidaste tu contraseña?»: borra la wallet de este navegador, con advertencias y confirmación explícita, para crear una nueva o recuperarla con las 24 palabras.
 - Restauración con recuperación asistida de saldo e historial.
+- Selector de red de prueba (Signet o testnet3) en el encabezado, con una wallet separada por red.
 - Balance y actividad en vivo.
 - Recepción Lightning, dirección de depósito on-chain y envío con cotización previa.
 - Runtime WASM oficial `v0.2.0`, fijado a la misma versión del SDK y verificado por digest antes de ejecutarse.
@@ -51,7 +52,11 @@ Para agregar un idioma: sumá el tag a `LOCALES`, agregá el diccionario a
 
 La semilla se genera en el navegador y queda cifrada en OPFS. Rayito y Wavelength no reciben las claves. Wavelength provee el runtime y conecta la wallet con Ark, Esplora y el servidor de swaps Lightning. El operador coordina la salida rápida, pero el usuario conserva una ruta unilateral hacia Bitcoin.
 
-La app usa **Signet** y el SDK está en estado alpha: sólo se deben usar sats de prueba. Desde Wavelength `v0.2.0` mainnet está abierto al público, pero el SDK no trae un preset: exige configurar los endpoints a mano, `allowMainnet: true` y la verificación de integridad del runtime activa.
+La app usa **Signet** por defecto y puede cambiar a **testnet3**; el SDK está en estado alpha: sólo se deben usar sats de prueba. Desde Wavelength `v0.2.0` mainnet está abierto al público, pero el SDK no trae un preset: exige configurar los endpoints a mano, `allowMainnet: true` y la verificación de integridad del runtime activa.
+
+### Redes
+
+`src/lib/network.ts` define las redes disponibles con su `dataDir`, Esplora, explorador y faucet. La elección se guarda en `localStorage` (`rayito.network`) y aplica al recargar, porque el motor arranca atado a una red. Cada red tiene su propio `dataDir` (`/rayito-wallet-v1` para Signet, `/rayito-wallet-testnet3` para testnet3), así que las wallets no se mezclan. El runtime toma un lock por origen, así que sólo una red puede estar abierta a la vez, también entre pestañas; una pestaña bloqueada por otra no muestra el selector. Antes de recargar, el cambio detiene la wallet para liberar ese lock, y queda deshabilitado mientras se muestran las 24 palabras, corre una recuperación o hay un cobro o pago en curso. Borrar la wallet desde «¿Olvidaste tu contraseña?» borra todo OPFS, o sea las wallets de todas las redes. Los hosts de cada red tienen que figurar en `connect-src` de `public/_headers` y `vercel.json`; `src/lib/network.test.ts` lo verifica contra los presets del SDK. testnet4 queda afuera por ahora: su gateway REST no pasó la validación TLS cuando lo probamos.
 
 Desde el SDK `0.2.0` los envíos a facturas Lightning no usan crédito del servidor salvo que el pedido lo autorice. Rayito pasa `maxCreditSat` (saldo + crédito disponible) y `maxCreditTopupSat` (saldo) para que las facturas chicas sigan funcionando; la revisión del pago muestra la recarga de crédito y el total que sale de la wallet, y el crédito disponible aparece junto al saldo. Si un envío falla, Rayito pide una cotización nueva en lugar de reintentar la anterior.
 

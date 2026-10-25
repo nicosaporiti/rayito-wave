@@ -2,9 +2,10 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useWallet, useWalletRecovery } from '@lightninglabs/wavelength-react';
 import { LoaderCircle, LockKeyhole } from 'lucide-react';
 import { Backup } from './components/Backup';
-import { Brand, NetworkBadge } from './components/Brand';
+import { Brand } from './components/Brand';
 import { Dashboard, type DashboardView } from './components/Dashboard';
 import { LanguageSwitch } from './components/LanguageSwitch';
+import { NetworkSwitch } from './components/NetworkSwitch';
 import { Onboarding, Unlock } from './components/Onboarding';
 import { RayitoMark } from './components/RayitoMark';
 import { Alert, AlertDescription } from './components/ui/alert';
@@ -13,6 +14,7 @@ import { Card } from './components/ui/card';
 import { Progress } from './components/ui/progress';
 import { useI18n } from './i18n/useI18n';
 import type { MessageKey } from './i18n/messages';
+import { useHoldNetwork } from './lib/network';
 
 const AUTO_LOCK_DELAY_MS = 5 * 60 * 1_000;
 const ACTIVITY_EVENTS = ['keydown', 'pointerdown', 'touchstart'] as const;
@@ -40,6 +42,11 @@ export function App({ walletResetDone = false }: AppProps) {
   const lockPending = useRef(false);
   const isRecovering = recovery.status === 'restoring';
   const isDashboardVisible = phase === 'ready' && pendingBackup === null;
+  // Another tab holds the wallet: switching from here would change the
+  // network under that tab's next reload, not this one's.
+  const lockedOut = phase === 'error' && error !== null && isWalletLockError(error);
+
+  useHoldNetwork(isRecovering);
 
   const lockWallet = useCallback(async (): Promise<void> => {
     if (lockPending.current || phase !== 'ready' || isRecovering) return;
@@ -138,7 +145,7 @@ export function App({ walletResetDone = false }: AppProps) {
         <Brand onHome={() => setDashboardView('home')} />
         <div className="header-actions">
           <LanguageSwitch />
-          <NetworkBadge />
+          {!lockedOut && <NetworkSwitch />}
           {phase === 'ready' && !pendingBackup && (
             <Button
               className="lock-button"
@@ -170,7 +177,10 @@ export function App({ walletResetDone = false }: AppProps) {
             </a>{' '}
             {t('app.footer.custody')}
           </p>
-          <p>{t('app.footer.alpha')}</p>
+          <p>
+            {t('app.footer.alpha')}
+            {!lockedOut && <> · {t('app.footer.network')} <NetworkSwitch variant="inline" /></>}
+          </p>
         </footer>
       )}
     </div>
@@ -206,6 +216,11 @@ const KNOWN_ERROR_KEYS: Readonly<Record<KnownErrorCode, { message: MessageKey; h
   asset_load_failed: { message: 'app.error.assetLoad', hint: 'app.error.assetLoadHint' },
   asset_integrity_failed: { message: 'app.error.integrity', hint: 'app.error.integrityHint' },
 };
+
+function isWalletLockError(error: Error): boolean {
+  const code = knownErrorCode(error);
+  return code === 'wallet_locked' || code === 'runtime_lock_unavailable';
+}
 
 function knownErrorCode(error: Error): KnownErrorCode | null {
   if (!('code' in error) || typeof error.code !== 'string') return null;

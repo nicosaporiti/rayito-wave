@@ -470,7 +470,7 @@ a {
 .eyebrow,
 .step-label,
 .balance-metric dt,
-.signet-guide-kicker,
+.faucet-guide-kicker,
 .activity-detail-section h3,
 .result-box > span {
   margin: 0;
@@ -484,7 +484,7 @@ a {
 
 .eyebrow,
 .step-label,
-.signet-guide-kicker,
+.faucet-guide-kicker,
 .activity-detail-section h3 {
   color: var(--rayito);
 }
@@ -1372,7 +1372,7 @@ a {
 .state-card h1,
 .backup-heading h1,
 .backup-check h2,
-.signet-guide h3,
+.faucet-guide h3,
 .activity-dialog-heading h2,
 .activity-detail-heading h2 {
   margin: 7px 0 8px;
@@ -2173,7 +2173,7 @@ form {
   50% { top: calc(100% - 13px); opacity: 1; }
 }
 
-.signet-guide {
+.faucet-guide {
   margin-top: 18px;
   padding: 17px;
   background: rgba(255, 255, 255, 0.02);
@@ -2181,12 +2181,12 @@ form {
   border-radius: 16px;
 }
 
-.signet-guide h3 {
+.faucet-guide h3 {
   margin: 5px 0 17px;
   font-size: 22px;
 }
 
-.signet-guide ol {
+.faucet-guide ol {
   margin: 0;
   padding: 0;
   display: grid;
@@ -2194,14 +2194,14 @@ form {
   list-style: none;
 }
 
-.signet-guide li {
+.faucet-guide li {
   display: grid;
   grid-template-columns: 26px minmax(0, 1fr);
   align-items: start;
   gap: 10px;
 }
 
-.signet-guide li > span {
+.faucet-guide li > span {
   width: 26px;
   height: 26px;
   display: grid;
@@ -2214,54 +2214,54 @@ form {
   font-size: 8px;
 }
 
-.signet-guide li p {
+.faucet-guide li p {
   margin: 3px 0 0;
   color: var(--text-soft);
   font-size: 10px;
   line-height: 1.5;
 }
 
-.signet-guide li strong {
+.faucet-guide li strong {
   color: var(--foreground);
 }
 
-.signet-guide-separator {
+.faucet-guide-separator {
   margin: 17px 0;
   background: var(--hairline);
 }
 
-.signet-guide-actions {
+.faucet-guide-actions {
   display: grid;
   gap: 8px;
 }
 
-.signet-faucet-link,
-.signet-mempool-link {
+.faucet-link,
+.faucet-mempool-link {
   min-height: 46px;
   padding: 11px 14px;
   border-radius: 14px;
   text-decoration: none;
 }
 
-.signet-faucet-link {
+.faucet-link {
   color: var(--primary-foreground);
   background: var(--primary);
   border-color: var(--primary);
   font-weight: 720;
 }
 
-.signet-faucet-link:hover {
+.faucet-link:hover {
   color: var(--primary-foreground);
   background: #fff;
 }
 
-.signet-mempool-link {
+.faucet-mempool-link {
   color: var(--foreground);
   background: transparent;
   border-color: var(--hairline-strong);
 }
 
-.signet-guide-note {
+.faucet-guide-note {
   margin-top: 12px;
   padding: 10px;
   color: var(--text-faint);
@@ -2269,11 +2269,111 @@ form {
   border-color: var(--hairline);
 }
 
-.signet-guide-note [data-slot="alert-description"] {
+.faucet-guide-note [data-slot="alert-description"] {
   color: inherit;
   font-size: 8px;
   line-height: 1.5;
   text-align: center;
+}
+
+.network-status {
+  cursor: pointer;
+}
+
+.network-status:hover {
+  color: var(--foreground);
+  border-color: var(--hairline-strong);
+}
+
+.network-inline {
+  /* Footer text is 9px: pad the hit area without moving the text. */
+  margin: -8px -4px;
+  padding: 8px 4px;
+  color: inherit;
+  background: none;
+  border: 0;
+  font: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.network-inline:hover {
+  color: var(--foreground);
+}
+
+.network-options {
+  margin: 20px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+  list-style: none;
+}
+
+.network-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--hairline);
+  border-radius: 16px;
+}
+
+.network-option[aria-current] {
+  border-color: var(--hairline-strong);
+}
+
+.network-option strong {
+  font-size: 15px;
+}
+
+.network-option p {
+  margin: 4px 0 0;
+  color: var(--text-soft);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.network-option button {
+  flex-shrink: 0;
+  min-height: 40px;
+  border-radius: 12px;
+}
+
+.network-option__current {
+  flex-shrink: 0;
+  color: var(--text-soft);
+  border-color: var(--hairline);
+}
+
+.network-warning {
+  margin-top: 14px;
+  padding: 12px;
+  color: var(--warning);
+  background: transparent;
+  border-color: var(--hairline);
+}
+
+.network-warning [data-slot="alert-description"] {
+  color: inherit;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+/* Two classes outrank the shared `.action-panel-body > div > p` colour. */
+.network-view > .network-error,
+.network-view > .network-held {
+  margin-top: 12px;
+}
+
+.network-view > .network-error {
+  color: var(--danger);
+}
+
+.network-view > .network-held {
+  color: var(--warning);
 }
 
 .invoice-result {

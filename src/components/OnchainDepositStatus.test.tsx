@@ -5,6 +5,7 @@ import { act, cleanup } from '@testing-library/react';
 import { render } from '../test/render';
 import type { Entry } from '@lightninglabs/wavelength-react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { forgetActiveNetwork } from '../lib/network';
 import { OnchainDepositStatus } from './OnchainDepositStatus';
 
 const ADDRESS = 'tb1qrayitosignetexample';
@@ -64,8 +65,25 @@ describe('OnchainDepositStatus polling', () => {
 
   afterEach(() => {
     cleanup();
+    localStorage.clear();
+    forgetActiveNetwork();
     vi.useRealTimers();
     vi.unstubAllGlobals();
+  });
+
+  it('polls the explorer of the network the wallet runs on', async () => {
+    localStorage.setItem('rayito.network', 'testnet');
+    forgetActiveNetwork();
+    fetchMock
+      .mockResolvedValueOnce(transactionsResponse())
+      .mockResolvedValueOnce(tipResponse());
+
+    render(<OnchainDepositStatus address={ADDRESS} entry={depositEntry('pending')} />);
+    await act(() => vi.advanceTimersByTimeAsync(0));
+
+    const api = 'https://mempool-testnet3.testnet.lightningcluster.com/api';
+    expect(fetchMock).toHaveBeenCalledWith(`${api}/address/${ADDRESS}/txs`, expect.anything());
+    expect(fetchMock).toHaveBeenCalledWith(`${api}/blocks/tip/height`, expect.anything());
   });
 
   it('waits for the active refresh before scheduling the next poll', async () => {

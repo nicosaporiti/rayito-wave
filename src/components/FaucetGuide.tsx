@@ -1,14 +1,12 @@
 import type { ReactElement } from 'react';
 import { useI18n } from '../i18n/useI18n';
+import { activeNetworkProfile } from '../lib/network';
 import { LinkIcon } from './Icons';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
 
-const SIGNET_FAUCET_URL = 'https://bitcoinsignetfaucet.com/';
-const SIGNET_MEMPOOL_ADDRESS_URL = 'https://mempool.space/signet/address/';
-
-type SignetFaucetGuideProps = {
+type FaucetGuideProps = {
   readonly address: string;
 };
 
@@ -19,14 +17,15 @@ const FAUCET_STEPS = [
   { strong: 'faucet.step4.strong', rest: 'faucet.step4.rest' },
 ] as const;
 
-export function SignetFaucetGuide({ address }: SignetFaucetGuideProps): ReactElement {
+export function FaucetGuide({ address }: FaucetGuideProps): ReactElement {
   const { t } = useI18n();
-  const mempoolAddressUrl = `${SIGNET_MEMPOOL_ADDRESS_URL}${encodeURIComponent(address)}`;
+  const { explorerUrl, faucetUrl } = activeNetworkProfile();
+  const mempoolAddressUrl = `${explorerUrl}/address/${encodeURIComponent(address)}`;
 
   return (
-    <section className="signet-guide" aria-labelledby="signet-guide-title">
-      <p className="signet-guide-kicker">{t('faucet.kicker')}</p>
-      <h3 id="signet-guide-title">{t('faucet.title')}</h3>
+    <section className="faucet-guide" aria-labelledby="faucet-guide-title">
+      <p className="faucet-guide-kicker">{t('faucet.kicker')}</p>
+      <h3 id="faucet-guide-title">{t('faucet.title')}</h3>
       <ol>
         {FAUCET_STEPS.map((step, index) => (
           <li key={step.strong}>
@@ -35,11 +34,11 @@ export function SignetFaucetGuide({ address }: SignetFaucetGuideProps): ReactEle
           </li>
         ))}
       </ol>
-      <Separator className="signet-guide-separator" />
-      <div className="signet-guide-actions">
-        <Button className="signet-faucet-link" asChild>
+      <Separator className="faucet-guide-separator" />
+      <div className="faucet-guide-actions">
+        <Button className="faucet-link" asChild>
           <a
-            href={SIGNET_FAUCET_URL}
+            href={faucetUrl}
             target="_blank"
             rel="noopener noreferrer"
             aria-label={t('faucet.open.aria')}
@@ -48,7 +47,7 @@ export function SignetFaucetGuide({ address }: SignetFaucetGuideProps): ReactEle
             <LinkIcon />
           </a>
         </Button>
-        <Button className="signet-mempool-link" variant="outline" asChild>
+        <Button className="faucet-mempool-link" variant="outline" asChild>
           <a
             href={mempoolAddressUrl}
             target="_blank"
@@ -60,7 +59,7 @@ export function SignetFaucetGuide({ address }: SignetFaucetGuideProps): ReactEle
           </a>
         </Button>
       </div>
-      <Alert className="signet-guide-note" role="note">
+      <Alert className="faucet-guide-note" role="note">
         <AlertDescription>{t('faucet.note')}</AlertDescription>
       </Alert>
     </section>

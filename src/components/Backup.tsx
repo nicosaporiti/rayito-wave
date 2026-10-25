@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useI18n } from '../i18n/useI18n';
 import type { MessageKey } from '../i18n/messages';
+import { useHoldNetwork } from '../lib/network';
 import { ArrowUpIcon } from './Icons';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Button } from './ui/button';
@@ -18,6 +19,8 @@ export function Backup({ mnemonic, onConfirmed }: BackupProps) {
   const { t } = useI18n();
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [errorKey, setErrorKey] = useState<MessageKey | null>(null);
+
+  useHoldNetwork(true);
 
   useEffect(() => {
     const guard = (event: BeforeUnloadEvent) => { event.preventDefault(); };

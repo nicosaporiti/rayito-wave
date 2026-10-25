@@ -39,7 +39,6 @@ vi.mock('./components/Brand', () => ({
   Brand: ({ onHome }: { onHome: () => void }) => (
     <button type="button" onClick={onHome}>Rayito</button>
   ),
-  NetworkBadge: () => <span>Signet</span>,
 }));
 vi.mock('./components/Dashboard', () => ({
   Dashboard: ({
@@ -315,6 +314,17 @@ describe('App wallet locking', () => {
     expect(screen.getByText(/ya está abierta en otra pestaña/)).toBeInTheDocument();
     expect(screen.getByText(/Cierra la otra pestaña/)).toBeInTheDocument();
     expect(screen.queryByText(/No borres los datos del perfil original/)).not.toBeInTheDocument();
+    // The other tab owns the wallet, so this one must not change its network.
+    expect(screen.queryByRole('button', { name: /cambiar de red/ })).not.toBeInTheDocument();
+  });
+
+  it('keeps the network switch but blocks it while a restore runs', () => {
+    wallet.recoveryStatus = 'restoring';
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Signet · prueba: cambiar de red' }));
+    expect(screen.getByRole('button', { name: 'Cambiar a Testnet3' })).toBeDisabled();
   });
 
   it('explains a runtime integrity failure without blaming the user', () => {

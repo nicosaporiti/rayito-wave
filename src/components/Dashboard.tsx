@@ -24,6 +24,7 @@ import {
   useWalletSend,
 } from '@lightninglabs/wavelength-react';
 import { recentActivity } from '../lib/activity';
+import { useHoldNetwork } from '../lib/network';
 import { useI18n } from '../i18n/useI18n';
 import type { MessageKey } from '../i18n/messages';
 import {
@@ -35,6 +36,7 @@ import { receiveProgressFor } from '../lib/receive-progress';
 import { parseSatoshiAmount } from '../lib/validation';
 import { ActivityDialog, ActivityRows } from './ActivityDialog';
 import { Dialog } from './Dialog';
+import { FaucetGuide } from './FaucetGuide';
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -47,9 +49,9 @@ import {
   LinkIcon,
 } from './Icons';
 import { LightningInvoiceResult } from './LightningInvoiceResult';
+import { NetworkSwitch } from './NetworkSwitch';
 import { OnchainDepositStatus } from './OnchainDepositStatus';
 import { QrInvoiceScanner } from './QrInvoiceScanner';
-import { SignetFaucetGuide } from './SignetFaucetGuide';
 import {
   Alert,
   AlertAction,
@@ -303,7 +305,7 @@ export function Dashboard({
                 </div>
                 <div className="balance-metric network-metric">
                   <dt>{t('dashboard.breakdown.network')}</dt>
-                  <dd>Signet <small>#{formatSats(blockHeight)}</small></dd>
+                  <dd><NetworkSwitch variant="inline" /> <small>#{formatSats(blockHeight)}</small></dd>
                 </div>
               </dl>
             </section>
@@ -503,6 +505,7 @@ function ReceiveForm({ onInvoiceCreated }: ReceiveFormProps) {
   const [memo, setMemo] = useState('');
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const { receive, receivePending, receiveData, receiveError } = useWalletReceive();
+  useHoldNetwork(receivePending);
   const amountResult = parseSatoshiAmount(amount);
 
   useEffect(() => {
@@ -634,7 +637,7 @@ function DepositForm({
               <LinkIcon />
             </Button>
           )}
-          <SignetFaucetGuide address={depositData.address} />
+          <FaucetGuide address={depositData.address} />
         </>
       ) : (
         <>
@@ -663,6 +666,7 @@ function SendForm() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const { prepare, preparePending, prepareError } = useWalletPrepareSend();
   const { sendPrepared, sendPending, sendData } = useWalletSend();
+  useHoldNetwork(preparePending || sendPending);
   const balance = useWalletBalance();
   const [sendFailure, setSendFailure] = useState<SendFailure | null>(null);
 

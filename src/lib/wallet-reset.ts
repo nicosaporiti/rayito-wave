@@ -94,7 +94,8 @@ async function wipe(resuming: boolean): Promise<WalletResetOutcome> {
   try {
     // The daemon spreads its databases across several SQLite VFSs (hashed
     // files at the root, the configured data directory and .opfs-sahpool),
-    // and Rayito is the only app on its origin, so the whole root goes.
+    // and Rayito is the only app on its origin, so the whole root goes,
+    // taking the wallet of every network with it.
     const root = await navigator.storage.getDirectory();
     const names: string[] = [];
     for await (const name of root.keys()) names.push(name);

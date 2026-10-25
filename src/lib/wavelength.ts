@@ -4,10 +4,13 @@ import {
   RUNTIME_MANIFEST_VERSION,
 } from '@lightninglabs/wavelength-web';
 import wavelengthWorkerSource from '@lightninglabs/wavelength-web/wavewalletdk-worker.js?raw';
+import { activeNetwork, NETWORK_PROFILES } from './network';
 
 const wavelengthWorkerURL = URL.createObjectURL(
   new Blob([wavelengthWorkerSource], { type: 'application/javascript' }),
 );
+
+const network = activeNetwork();
 
 export const walletEngine = createWebWalletEngine({
   // A blob inherits the document's current isolation policy and cannot reuse a
@@ -17,6 +20,6 @@ export const walletEngine = createWebWalletEngine({
     `/wavewalletdk/${RUNTIME_MANIFEST_VERSION}/`,
     window.location.origin,
   ).href,
-  config: defaultConfig('signet', { dataDir: '/rayito-wallet-v1' }),
+  config: defaultConfig(network, { dataDir: NETWORK_PROFILES[network].dataDir }),
   autoStart: true,
 });
